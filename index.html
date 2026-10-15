@@ -380,6 +380,10 @@ const CASH_TYPES = ['Bevétel','Kiadás','Átvezetés'];
 const ACCT_TYPES = ['Bankszámla','Készpénz','Brókerszámla','Megtakarítás','TBSZ'];
 const DEFAULT_CATS = ['Munkabér','Ösztöndíj','Egyéb bevétel','Élelmiszer','Étterem, kávé','Lakhatás','Rezsi','Közlekedés','Telefon, internet','Előfizetések','Ruházat','Egészség','Tanulmányok','Szórakozás','Ajándék','Egyéb kiadás'];
 const SERIES = n => `var(--s${(n % 8) + 1})`;
+// Eszközök saját (márka)színei, a dizájntól függetlenül
+const ASSET_COLORS = { 'VWCE': '#c8102e', 'VWRL': '#c8102e', 'VUAA': '#c8102e', 'EQQQ': '#1f6fd1', 'CNDX': '#1f6fd1', 'XNAS': '#1f6fd1', 'SEC0': '#6b4fd8', 'BTC': '#f7931a', 'BTC/EUR': '#f7931a', 'BTC/USD': '#f7931a', 'ETH': '#627eea', 'ETH/EUR': '#627eea', 'MSTR': '#e8590c' };
+const FALLBACK_COLORS = ['#6b4fd8', '#0ea5e9', '#d6336c', '#e8590c', '#0f766e', '#a16207', '#7c3aed', '#be123c'];
+const assetColor = (tk, i) => ASSET_COLORS[tk] || ASSET_COLORS[String(tk).split(/[/.]/)[0]] || FALLBACK_COLORS[i % FALLBACK_COLORS.length];
 const docId = s => String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g, '_').slice(0, 120) || uid();
 
 const I = {
@@ -472,7 +476,7 @@ function calcHoldings(T) {
     const missing = M == null || rate == null;
     const R = missing ? V : M * rate;
     const out = {
-      ...h, inst, ccy, qty, U, V, K, M, R, missing, color: SERIES(idx++),
+      ...h, inst, ccy, qty, U, V, K, M, R, missing, color: assetColor(h.tk, idx++),
       N: ok(M) && U ? (M - U) / U : null, O: V ? (R - V) / V : null, T: R - V,
       avg: qty ? U / qty : null, avgUsd: qty && rate && usd ? (U / qty) * rate / usd : null,
       name: inst.name || '', sector: inst.sector || '',
