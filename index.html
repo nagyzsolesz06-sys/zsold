@@ -369,6 +369,8 @@ const ui = {
 if (!VIEWS.some(v => v[0] === ui.view)) ui.view = 'overview';
 const cats = () => (S.config && Array.isArray(S.config.categories) && S.config.categories.length) ? S.config.categories : DEFAULT_CATS;
 const taxRows = () => (S.config && Array.isArray(S.config.tax)) ? S.config.tax : [];
+const DEFAULT_RULES = { defaultAcct: '', cardAcct: '', keywords: [], recurring: [] };
+const rules = () => ({ ...DEFAULT_RULES, ...((S.config && S.config.rules && typeof S.config.rules === 'object') ? S.config.rules : {}) });
 
 /* ---------- FX (MNB) ---------- */
 function fxRate(ccy, d) {
@@ -497,7 +499,7 @@ async function loadAll() {
     S.inst = ins.map(i => ({ id: i.id, ticker: i.ticker, name: i.name, sector: i.sector, ccy: i.ccy, price: i.price == null ? null : num(i.price), priceDate: i.price_at ? String(i.price_at).slice(0, 10) : '', source: i.source,
       history: ph.filter(p => p.ticker === i.ticker).map(p => ({ d: p.d, p: num(p.price) })) }));
     S.fx = fx.map(r => ({ d: r.d, EUR: r.eur == null ? undefined : num(r.eur), USD: r.usd == null ? undefined : num(r.usd), CHF: r.chf == null ? undefined : num(r.chf) }));
-    S.config = st[0] ? { categories: st[0].categories, tax: st[0].tax } : null;
+    S.config = st[0] ? { categories: st[0].categories, tax: st[0].tax, rules: st[0].rules } : null;
     S.mode = 'live'; S.loaded.all = true;
   } catch (e) { console.error(e); S.mode = 'error'; }
   schedule();
@@ -514,7 +516,8 @@ async function put(coll, id, data) {
     if (coll === 'meta') {
       if (id !== 'config') { toast('Az árfolyamokat a frissítő program kezeli.'); return false; }
       const { data: u } = await sb.auth.getUser();
-      const { error } = await sb.from('settings').upsert({ user_id: u.user.id, categories: data.categories, tax: data.tax }); if (error) throw error;
+      const row = { user_id: u.user.id, categories: data.categories, tax: data.tax }; if (data.rules) row.rules = data.rules;
+      const { error } = await sb.from('settings').upsert(row); if (error) throw error;
     } else if (coll === 'instruments') {
       const { error } = await sb.from('instruments').upsert(toRow(coll, data), { onConflict: 'user_id,ticker' }); if (error) throw error;
     } else {
@@ -596,7 +599,7 @@ const CAT_KEYWORDS = [
   ['Ösztöndíj', ['osztondij']],
   ['Munkabér', ['fizetes', 'munkaber', 'ber ', 'berem', 'munkabert']],
   ['Előfizetések', ['netflix', 'spotify', 'youtube', 'claude', 'chatgpt', 'openai', 'hbo', 'max ', 'disney', 'icloud', 'google one', 'elofizet', 'game pass', 'ps plus', 'prime']],
-  ['Telefon, internet', ['telefon', 'telekom', 'yettel', 'vodafone', 'internet', 'digi', 'mobilszamla']],
+  ['Telefon, internet', ['telefonszamla', 'telefonelofizetes', 'telekom', 'yettel', 'vodafone', 'internet', 'digi', 'mobilszamla']],
   ['Közlekedés', ['bkv', 'berlet', 'busz', 'villamos', 'metro', 'vonat', 'mav', 'volan', 'benzin', 'tankol', 'uber', 'taxi', 'bolttal', 'bolt taxi', 'parkol', 'jegy (busz', 'buszjegy', 'vonatjegy', 'hev']],
   ['Étterem, kávé', ['etterem', 'kaja', 'kinai', 'pizza', 'burger', 'mcdonald', 'mekk', 'kfc', 'kebab', 'gyros', 'kave', 'kavezo', 'starbucks', 'costa', 'ebed', 'vacsora', 'reggeli', 'menza', 'wolt', 'foodora', 'sushi', 'bisztro', 'cukraszda', 'fagyi', 'pekseg', 'langos']],
   ['Élelmiszer', ['tesco', 'lidl', 'aldi', 'spar', 'penny', 'auchan', 'coop', 'cba', 'elelmiszer', 'bevasarl', 'zoldseg', 'gyumolcs', 'bolt', 'abc', 'rossmann', 'dm ']],
@@ -611,7 +614,7 @@ const CAT_KEYWORDS = [
 const BRANDS = { 'h&m': 'H&M', 'hm': 'H&M', 'zara': 'Zara', 'tesco': 'Tesco', 'lidl': 'Lidl', 'aldi': 'Aldi', 'spar': 'Spar', 'penny': 'Penny', 'auchan': 'Auchan', 'mcdonald': "McDonald's", 'mekk': "McDonald's", 'kfc': 'KFC', 'starbucks': 'Starbucks', 'wolt': 'Wolt', 'foodora': 'Foodora', 'netflix': 'Netflix', 'spotify': 'Spotify', 'claude': 'Claude', 'rossmann': 'Rossmann', 'dm': 'dm', 'decathlon': 'Decathlon', 'nike': 'Nike', 'adidas': 'Adidas', 'bkv': 'BKV', 'mav': 'MÁV', 'uber': 'Uber', 'reserved': 'Reserved' };
 const INCOME_WORDS = ['kaptam', 'jott', 'erkezett', 'bevetel', 'fizetes', 'osztondij', 'munkaber', 'visszautal', 'visszakaptam', 'eladtam', 'nyertem', 'kamat'];
 const TRANSFER_WORDS = ['atutal', 'atvezet', 'valtottam', 'valtas', 'feltoltottem', 'feltoltes', 'atraktam', 'kivettem', 'befizettem'];
-const STOP = new Set(['vettem', 'vettunk', 'egy', 'egyet', 'a', 'az', 'es', 'meg', 'is', 'ert', 'ft', 'forint', 'huf', 'eur', 'euro', 'usd', 'dollar', 'chf', 'kartyaval', 'kartya', 'kartyas', 'keszpenzzel', 'keszpenz', 'kp', 'cash', 'ma', 'tegnap', 'tegnapelott', 'fizettem', 'volt', 'voltam', 'voltunk', 'be', 'ba', 'ben', 'ban', 'bol', 'bol', 'rol', 'ra', 're', 'nal', 'nel', 'ott', 'itt', 'most', 'kb', 'kozel', 'osszesen', 'kaptam', 'koltottem', 'koltes', 'utan', 'mert', 'hogy', 'kifizettem', 'rendeltem', 'ettem', 'ittam', 'en', 'nekem', 'szamara', 'pedig', 'aztan', 'plusz', 'dbt', 'db', 'darab', 'jott', 'erkezett', 'atutaltam', 'utaltam', 'het', 'mult', 'mulhet', 'heten', 'napon', 'nap', 'ejjel', 'reggel', 'delben', 'este', 'delutan']);
+const STOP = new Set(['telefonnal', 'telefonrol', 'megkaptam', 'megjott', 'applepay', 'gpay', 'vettem', 'vettunk', 'egy', 'egyet', 'a', 'az', 'es', 'meg', 'is', 'ert', 'ft', 'forint', 'huf', 'eur', 'euro', 'usd', 'dollar', 'chf', 'kartyaval', 'kartya', 'kartyas', 'keszpenzzel', 'keszpenz', 'kp', 'cash', 'ma', 'tegnap', 'tegnapelott', 'fizettem', 'volt', 'voltam', 'voltunk', 'be', 'ba', 'ben', 'ban', 'bol', 'bol', 'rol', 'ra', 're', 'nal', 'nel', 'ott', 'itt', 'most', 'kb', 'kozel', 'osszesen', 'kaptam', 'koltottem', 'koltes', 'utan', 'mert', 'hogy', 'kifizettem', 'rendeltem', 'ettem', 'ittam', 'en', 'nekem', 'szamara', 'pedig', 'aztan', 'plusz', 'dbt', 'db', 'darab', 'jott', 'erkezett', 'atutaltam', 'utaltam', 'het', 'mult', 'mulhet', 'heten', 'napon', 'nap', 'ejjel', 'reggel', 'delben', 'este', 'delutan']);
 
 function learnedCats() {
   const m = new Map();
@@ -663,7 +666,10 @@ function findAccounts(n, ccy) {
   hits.forEach(h => { const prev = byPos.get(h.i); if (!prev || h.exact || (!prev.exact && ccy && up(h.a.ccy) === ccy)) byPos.set(h.i, h); });
   return [...byPos.values()].sort((x, y) => x.i - y.i).map(h => h.a.name);
 }
+const CARD_RE = /\b(kartya\w*|telefonnal|telefonrol|applepay|apple pay|google ?pay|gpay)\b/;
+function ruleFor(n) { return (rules().keywords || []).find(r => r.k && n.includes(norm(r.k))) || null; }
 function cardAccount() {
+  const rc = rules().cardAcct; if (rc && S.accounts.some(a => a.name === rc)) return rc;
   const cnt = {}; S.cash.filter(c => c.type === 'Kiadás' && c.acct).forEach(c => { const a = S.accounts.find(x => x.name === c.acct); if (a && a.type !== 'Készpénz' && up(a.ccy) === 'HUF') cnt[c.acct] = (cnt[c.acct] || 0) + 1; });
   const best = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
   return best ? best[0] : (S.accounts.find(a => a.type === 'Bankszámla' && up(a.ccy) === 'HUF') || {}).name || '';
@@ -696,28 +702,59 @@ function localParse(text) {
   const learned = learnedCats(), def = defaultAcct();
   const parts = text.split(/\s*(?:[;\n]|,(?!\d)|\s(?:es|és|meg|aztan|aztán|plusz)\s)\s*/i).filter(s => s.trim());
   const segs = []; let carry = '';
-  parts.forEach(p => { const t = (carry ? carry + ' és ' : '') + p; if (findAmount(norm(p))) { segs.push(t); carry = ''; } else carry = t; });
+  parts.forEach(p => { const t = (carry ? carry + ' és ' : '') + p; const np = norm(p); if (findAmount(np) || (ruleFor(np) || {}).amount) { segs.push(t); carry = ''; } else carry = t; });
   if (carry && segs.length) segs[segs.length - 1] += ' ' + carry; else if (carry) segs.push(carry);
   let lastDate = null, lastAcct = null;
   return segs.map(seg => {
     let n = norm(seg);
     const dt = findDate(n); if (dt) { lastDate = dt.d; n = n.replace(dt.re, ' '); }
-    const amt = findAmount(n); if (!amt) return null;
+    const rule = ruleFor(n);
+    const amt = findAmount(n) || (rule && num(rule.amount) > 0 ? { v: num(rule.amount), ccy: rule.ccy || '' } : null); if (!amt) return null;
     let type = TRANSFER_WORDS.some(w => n.includes(w)) ? 'Átvezetés' : INCOME_WORDS.some(w => n.includes(w)) ? 'Bevétel' : 'Kiadás';
+    if (rule && rule.type) type = rule.type;
     const accs = findAccounts(n, amt.ccy);
     if (accs.length >= 2 && type !== 'Bevétel') type = 'Átvezetés';
-    let acct = accs[0] || (/\bkartya/.test(n) ? cardAccount() : '') || lastAcct || def;
-    if (accs[0] || /\bkartya/.test(n)) lastAcct = acct;
+    let acct = accs[0] || (CARD_RE.test(n) ? cardAccount() : '') || (rule && rule.acct) || lastAcct || def;
+    if (accs[0] || CARD_RE.test(n)) lastAcct = acct;
     const toAcct = type === 'Átvezetés' ? (accs[1] || '') : '';
     const a = S.accounts.find(x => x.name === acct);
-    const ccy = amt.ccy || (a ? up(a.ccy) : 'HUF');
-    const cat = type === 'Átvezetés' ? '' : guessCat(n, type, learned);
-    return { type, amount: amt.v, ccy, date: lastDate || today(), cat, desc: makeDesc(seg, n, cat) || (type === 'Átvezetés' ? 'Átvezetés' : ''), acct, toAcct };
+    const ccy = amt.ccy || (rule && rule.ccy) || (a ? up(a.ccy) : 'HUF');
+    const cat = type === 'Átvezetés' ? '' : (rule && rule.cat) || guessCat(n, type, learned);
+    const desc = (rule && rule.desc) ? rule.desc : makeDesc(seg, n, cat);
+    return { type, amount: amt.v, ccy, date: lastDate || today(), cat, desc: desc || (type === 'Átvezetés' ? 'Átvezetés' : ''), acct, toAcct };
   }).filter(Boolean);
+}
+
+/* ----- Recurring items ----- */
+function dueRecurring() {
+  const out = [], now = new Date(), td = today();
+  (rules().recurring || []).forEach((it, idx) => {
+    let y = +(it.start || td).slice(0, 4), m = +(it.start || td).slice(5, 7);
+    while (y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth() + 1)) {
+      const ym = `${y}-${pad(m)}`, day = Math.min(num(it.day) || 1, new Date(y, m, 0).getDate()), date = `${ym}-${pad(day)}`;
+      if (date <= td && !(it.skip || []).includes(ym)) {
+        const booked = S.cash.some(c => (c.date || '').slice(0, 7) === ym && c.type === it.type && c.cat === it.cat && low(c.acct) === low(it.acct));
+        if (!booked) out.push({ idx, ym, item: { type: it.type, amount: num(it.amount), ccy: up(it.ccy) || 'HUF', date, cat: it.cat || '', desc: it.desc || it.cat || '', acct: it.acct || '', toAcct: '' } });
+      }
+      m++; if (m > 12) { m = 1; y++; }
+    }
+  });
+  return out;
+}
+function recurringCard() {
+  const due = dueRecurring(); if (!due.length) return '';
+  return `<section class="qprev"><div class="group-h" style="text-transform:none">Esedékes ismétlődő tételek<span>${due.length} db</span></div><div class="list">
+    ${due.map(d => { const c = d.item, sign = c.type === 'Bevétel' ? '+' : '−';
+      return `<div class="row" style="grid-template-columns:40px minmax(0,1fr) auto auto;cursor:default">${avatar(c.desc, c.type === 'Bevétel' ? 'var(--s3)' : '', 1)}
+        <div class="r-main"><b>${esc(c.desc)} · <i class="${c.type === 'Bevétel' ? 't-pos' : ''}" style="font-style:normal">${sign}${money(c.amount, c.ccy)}</i></b><span>${esc(c.cat)} · ${esc(c.acct)} · ${fDate(c.date)}</span></div>
+        <button class="btn ghost sm" data-act="rec-skip" data-i="${d.idx}" data-ym="${d.ym}">Kihagyás</button>
+        <button class="btn sm" data-act="rec-book" data-i="${d.idx}" data-ym="${d.ym}">Rögzítés</button></div>`; }).join('')}
+  </div></section>`;
 }
 
 /* ----- Smart entry UI ----- */
 function defaultAcct() {
+  const rd = rules().defaultAcct; if (rd && S.accounts.some(a => a.name === rd)) return rd;
   const recent = [...S.cash].filter(c => c.type === 'Kiadás' && c.acct).sort((a, b) => (b.date || '').localeCompare(a.date || '') || num(b.created) - num(a.created))[0];
   return recent ? recent.acct : (S.accounts[0] ? S.accounts[0].name : '');
 }
@@ -806,7 +843,7 @@ R.overview = () => {
   const maxE = Math.max(1, ...exps.map(r => r[1].exp)), maxI = Math.max(1, ...incs.map(r => r[1].inc));
   const catList = (rows, key, max, color) => rows.map(([k, v]) => `<div class="cat-row"><span>${esc(k)}${k === 'Nincs kategória' ? ' <span class="pill warn">besorolandó</span>' : ''}</span><div class="cat-bar"><i style="width:${(v[key] / max * 100).toFixed(1)}%;background:${color}"></i></div><b>${huf(v[key])}</b></div>`).join('');
   const held = P.list.filter(h => h.R > 0);
-  return header('Áttekintés', `Utolsó MNB árfolyam: ${fDate(lastFxDate()) || '–'}`) + quickBar() + `
+  return header('Áttekintés', `Utolsó MNB árfolyam: ${fDate(lastFxDate()) || '–'}`) + quickBar() + recurringCard() + `
   <section class="hero">
     <span class="eyebrow">Nettó vagyon</span>
     <div class="big">${nf0.format(Math.round(nw))}<small>Ft</small></div>
@@ -1004,10 +1041,48 @@ R.fx = () => {
 };
 
 /* ----- Settings ----- */
+function rulesSettings(RL, accOpts) {
+  return `
+  <section class="card">
+    <div class="card-h"><h2>Okos beíró: számlák</h2></div>
+    <div class="form">
+      <div class="field"><label for="rlDef">Ha nem írok számlát</label><select id="rlDef" data-rule="defaultAcct">${accOpts(RL.defaultAcct, 'A legutóbb használt')}</select></div>
+      <div class="field"><label for="rlCard">„Kártyával” / „telefonnal”</label><select id="rlCard" data-rule="cardAcct">${accOpts(RL.cardAcct, 'A leggyakoribb bankszámla')}</select></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>Okos beíró: kulcsszavak</h2><span class="faint">ha a szöveg tartalmazza, ezt használja</span></div>
+    <div class="list">${(RL.keywords || []).map((r, i) => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:default"><div class="r-main"><b>„${esc(r.k)}”</b><span>${esc([r.type, r.cat, r.acct, num(r.amount) ? money(num(r.amount), r.ccy || 'HUF') : ''].filter(Boolean).join(' · '))}</span></div><button class="btn ghost sm" data-act="kw-del" data-i="${i}">Törlés</button></div>`).join('') || '<p class="muted">Még nincs saját kulcsszó.</p>'}</div>
+    <form class="form" data-form="kw-add" style="margin-top:12px">
+      <div class="field"><label for="kwK">Kulcsszó</label><input id="kwK" placeholder="pl. menza" maxlength="40" required></div>
+      <div class="field"><label for="kwT">Típus</label><select id="kwT">${opt(['Kiadás', 'Bevétel'], 'Kiadás')}</select></div>
+      <div class="field"><label for="kwC">Kategória</label><select id="kwC">${opt(cats(), '', '–')}</select></div>
+      <div class="field"><label for="kwA">Számla</label><select id="kwA">${accOpts('', '–')}</select></div>
+      <div class="field"><label for="kwM">Alapösszeg (nem kötelező)</label><input id="kwM" inputmode="decimal" placeholder="pl. 22,30"></div>
+      <div class="field"><label for="kwY">Pénznem</label><select id="kwY"><option value="">–</option>${opt(CCYS, '')}</select></div>
+      <div class="full"><button class="btn sm" type="submit">Kulcsszó hozzáadása</button></div>
+    </form>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>Ismétlődő tételek</h2><span class="faint">esedékességkor az Áttekintésen felajánlja</span></div>
+    <div class="list">${(RL.recurring || []).map((r, i) => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:default"><div class="r-main"><b>${esc(r.desc)} · ${r.type === 'Bevétel' ? '+' : '−'}${money(num(r.amount), r.ccy)}</b><span>minden hónap ${num(r.day)}. · ${esc(r.cat)} · ${esc(r.acct)}</span></div><button class="btn ghost sm" data-act="rr-del" data-i="${i}">Törlés</button></div>`).join('') || '<p class="muted">Még nincs ismétlődő tétel.</p>'}</div>
+    <form class="form" data-form="rr-add" style="margin-top:12px">
+      <div class="field"><label for="rrD">Megnevezés</label><input id="rrD" placeholder="pl. Spotify" maxlength="40" required></div>
+      <div class="field"><label for="rrT">Típus</label><select id="rrT">${opt(['Kiadás', 'Bevétel'], 'Kiadás')}</select></div>
+      <div class="field"><label for="rrC">Kategória</label><select id="rrC">${opt(cats(), '', '–')}</select></div>
+      <div class="field"><label for="rrA">Számla</label><select id="rrA">${accOpts('', '–')}</select></div>
+      <div class="field"><label for="rrM">Összeg</label><input id="rrM" inputmode="decimal" required></div>
+      <div class="field"><label for="rrY">Pénznem</label><select id="rrY">${opt(CCYS, 'HUF')}</select></div>
+      <div class="field"><label for="rrN">Hónap hányadik napján</label><input id="rrN" type="number" min="1" max="31" value="1"></div>
+      <div class="full"><button class="btn sm" type="submit">Ismétlődő tétel hozzáadása</button></div>
+    </form>
+  </section>`;
+}
 R.settings = () => {
   if (!allLoaded()) return header('Beállítások') + loadingBlock();
   const tax = [...taxRows()].sort((a, b) => num(a.y) - num(b.y));
-  return header('Beállítások', 'Kategóriák és adókulcsok', '<button class="btn ghost" data-act="logout">Kijelentkezés</button>') + `
+  const RL = rules(), accOpts = (cur, blank) => opt(S.accounts.map(a => a.name), cur, blank);
+  return header('Beállítások', 'Szabályok, kategóriák és adókulcsok', '<button class="btn ghost" data-act="logout">Kijelentkezés</button>') + rulesSettings(RL, accOpts) + `
   <section class="card">
     <div class="card-h"><h2>Kategóriák</h2><span class="faint">${cats().length} db</span></div>
     <div class="chips">${cats().map((k, i) => `<span class="chip">${esc(k)}<button data-act="cat-del" data-i="${i}" aria-label="${esc(k)} törlése">${I.x}</button></span>`).join('')}</div>
@@ -1378,7 +1453,7 @@ async function fxPasteSave() {
 }
 
 async function saveConfig(patch) {
-  const base = { categories: cats(), tax: taxRows() };
+  const base = { categories: cats(), tax: taxRows(), rules: rules() };
   return put('meta', 'config', { ...base, ...patch });
 }
 
@@ -1411,6 +1486,10 @@ document.addEventListener('click', async e => {
     case 'q-save': b.disabled = true; await quickSave(); break;
     case 'acct-new': acctSheet(null); break;
     case 'recon': reconSheet(); break;
+    case 'kw-del': { const r = rules(); r.keywords = (r.keywords || []).filter((_, i) => i !== +b.dataset.i); if (await saveConfig({ rules: r })) toast('Kulcsszó törölve'); break; }
+    case 'rr-del': { const r = rules(); r.recurring = (r.recurring || []).filter((_, i) => i !== +b.dataset.i); if (await saveConfig({ rules: r })) toast('Ismétlődő tétel törölve'); break; }
+    case 'rec-book': { const d = dueRecurring().find(x => x.idx === +b.dataset.i && x.ym === b.dataset.ym); if (!d) break; b.disabled = true; if (await put('cash', uid(), { ...d.item, created: Date.now() })) toast(d.item.desc + ' rögzítve'); break; }
+    case 'rec-skip': { const r = rules(); const it = r.recurring[+b.dataset.i]; if (!it) break; it.skip = [...(it.skip || []), b.dataset.ym]; if (await saveConfig({ rules: r })) toast('Kihagyva erre a hónapra'); break; }
     case 'recon-save': b.disabled = true; await reconSave(); break;
     case 'acct-edit': acctSheet(S.accounts.find(x => x.id === b.dataset.id)); break;
     case 'acct-save': b.disabled = true; await acctSave(b.dataset.id); b.disabled = false; break;
@@ -1439,7 +1518,9 @@ document.addEventListener('click', async e => {
     }
   }
 });
-document.addEventListener('change', e => {
+document.addEventListener('change', async e => {
+  const rk = e.target.dataset && e.target.dataset.rule;
+  if (rk) { const r = rules(); r[rk] = e.target.value; if (await saveConfig({ rules: r })) toast('Elmentve'); return; }
   const k = e.target.dataset && e.target.dataset.change; if (!k) return;
   ui[k] = k === 'year' ? +e.target.value : e.target.value; render();
 });
@@ -1452,6 +1533,16 @@ document.addEventListener('input', e => {
 document.addEventListener('submit', async e => {
   e.preventDefault();
   if (e.target.dataset.form === 'quick') { await quickParse(); return; }
+  if (e.target.dataset.form === 'kw-add') {
+    const k = fv('kwK').trim(); if (!k) return;
+    const r = rules(); r.keywords = [...(r.keywords || []).filter(x => norm(x.k) !== norm(k)), { k, type: fv('kwT'), cat: fv('kwC'), acct: fv('kwA'), amount: fv('kwM').trim() ? num(fv('kwM')) : 0, ccy: fv('kwY') }];
+    if (await saveConfig({ rules: r })) toast('Kulcsszó elmentve'); return;
+  }
+  if (e.target.dataset.form === 'rr-add') {
+    const amount = num(fv('rrM')); if (!(amount > 0)) return toast('Adj meg összeget.');
+    const r = rules(); r.recurring = [...(r.recurring || []), { desc: fv('rrD').trim(), type: fv('rrT'), cat: fv('rrC'), acct: fv('rrA'), amount, ccy: fv('rrY'), day: Math.min(31, Math.max(1, num(fv('rrN')) || 1)), start: today().slice(0, 7), skip: [] }];
+    if (await saveConfig({ rules: r })) toast('Ismétlődő tétel elmentve'); return;
+  }
   if (e.target.dataset.form === 'cat-add') { const v = fv('catNew').trim(); if (!v) return; if (cats().some(c => low(c) === low(v))) return toast('Ez a kategória már létezik'); await saveConfig({ categories: [...cats(), v] }); }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheetRoot.innerHTML) closeSheet(); });
