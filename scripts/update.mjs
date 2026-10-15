@@ -73,7 +73,7 @@ async function mnbRates(start, end) {
     }
     rows.push(row);
   }
-  return rows;
+  return rows.sort((x, y) => x.d < y.d ? -1 : 1);
 }
 
 /* ---------- Árforrások ---------- */
