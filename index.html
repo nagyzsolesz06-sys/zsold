@@ -588,14 +588,141 @@ const loadingBlock = () => `<div class="empty"><b>Adatok betöltése…</b><span
 const avatar = (txt, color, n = 3) => `<span class="av ${color ? 'c' : ''}" ${color ? `style="background:${color}"` : ''}>${esc(String(txt).replace(/[^A-Za-z0-9ÁÉÍÓÖŐÚÜŰáéíóöőúüű]/g, '').slice(0, n).toUpperCase() || '•')}</span>`;
 const btnAdd = (act, label, extra = '') => `<button class="btn" data-act="${act}" ${extra}>${I.plus.replace('<svg', '<svg')}${label}</button>`;
 
-/* ----- Smart entry ----- */
+/* ----- Smart entry: local Hungarian parser ----- */
 const DAYS = ['vasárnap','hétfő','kedd','szerda','csütörtök','péntek','szombat'];
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const MONTHS_N = { jan: 1, feb: 2, mar: 3, marc: 3, apr: 4, maj: 5, jun: 6, jul: 7, aug: 8, szep: 9, szept: 9, sep: 9, okt: 10, oct: 10, nov: 11, dec: 12 };
+const CAT_KEYWORDS = [
+  ['Ösztöndíj', ['osztondij']],
+  ['Munkabér', ['fizetes', 'munkaber', 'ber ', 'berem', 'munkabert']],
+  ['Előfizetések', ['netflix', 'spotify', 'youtube', 'claude', 'chatgpt', 'openai', 'hbo', 'max ', 'disney', 'icloud', 'google one', 'elofizet', 'game pass', 'ps plus', 'prime']],
+  ['Telefon, internet', ['telefon', 'telekom', 'yettel', 'vodafone', 'internet', 'digi', 'mobilszamla']],
+  ['Közlekedés', ['bkv', 'berlet', 'busz', 'villamos', 'metro', 'vonat', 'mav', 'volan', 'benzin', 'tankol', 'uber', 'taxi', 'bolttal', 'bolt taxi', 'parkol', 'jegy (busz', 'buszjegy', 'vonatjegy', 'hev']],
+  ['Étterem, kávé', ['etterem', 'kaja', 'kinai', 'pizza', 'burger', 'mcdonald', 'mekk', 'kfc', 'kebab', 'gyros', 'kave', 'kavezo', 'starbucks', 'costa', 'ebed', 'vacsora', 'reggeli', 'menza', 'wolt', 'foodora', 'sushi', 'bisztro', 'cukraszda', 'fagyi', 'pekseg', 'langos']],
+  ['Élelmiszer', ['tesco', 'lidl', 'aldi', 'spar', 'penny', 'auchan', 'coop', 'cba', 'elelmiszer', 'bevasarl', 'zoldseg', 'gyumolcs', 'bolt', 'abc', 'rossmann', 'dm ']],
+  ['Ruházat', ['cipo', 'polo', 'nadrag', 'farmer', 'kabat', 'pulover', 'ruha', 'zokni', 'h&m', 'hm', 'zara', 'reserved', 'nike', 'adidas', 'pull&bear', 'bershka', 'sapka', 'kapucnis']],
+  ['Egészség', ['gyogyszer', 'patika', 'orvos', 'fogorvos', 'gym', 'konditerem', 'edzoterem', 'pumping iron', 'feherje', 'vitamin', 'szemuveg']],
+  ['Tanulmányok', ['konyv', 'tankonyv', 'jegyzet', 'egyetem', 'corvinus', 'tandij', 'kurzus', 'udemy', 'coursera', 'nyelvvizsga', 'vizsga', 'maven']],
+  ['Szórakozás', ['mozi', 'koncert', 'buli', 'jatek', 'steam', 'bar ', 'sor ', 'sort', 'fesztival', 'szinhaz', 'jegy', 'bowling', 'escape', 'party']],
+  ['Ajándék', ['ajandek', 'szulinap', 'nevnap', 'virag', 'karacsony']],
+  ['Lakhatás', ['alberlet', 'lakber', 'kaucio']],
+  ['Rezsi', ['rezsi', 'villany', 'gazszamla', 'viz', 'kozos koltseg', 'futes']],
+];
+const BRANDS = { 'h&m': 'H&M', 'hm': 'H&M', 'zara': 'Zara', 'tesco': 'Tesco', 'lidl': 'Lidl', 'aldi': 'Aldi', 'spar': 'Spar', 'penny': 'Penny', 'auchan': 'Auchan', 'mcdonald': "McDonald's", 'mekk': "McDonald's", 'kfc': 'KFC', 'starbucks': 'Starbucks', 'wolt': 'Wolt', 'foodora': 'Foodora', 'netflix': 'Netflix', 'spotify': 'Spotify', 'claude': 'Claude', 'rossmann': 'Rossmann', 'dm': 'dm', 'decathlon': 'Decathlon', 'nike': 'Nike', 'adidas': 'Adidas', 'bkv': 'BKV', 'mav': 'MÁV', 'uber': 'Uber', 'reserved': 'Reserved' };
+const INCOME_WORDS = ['kaptam', 'jott', 'erkezett', 'bevetel', 'fizetes', 'osztondij', 'munkaber', 'visszautal', 'visszakaptam', 'eladtam', 'nyertem', 'kamat'];
+const TRANSFER_WORDS = ['atutal', 'atvezet', 'valtottam', 'valtas', 'feltoltottem', 'feltoltes', 'atraktam', 'kivettem', 'befizettem'];
+const STOP = new Set(['vettem', 'vettunk', 'egy', 'egyet', 'a', 'az', 'es', 'meg', 'is', 'ert', 'ft', 'forint', 'huf', 'eur', 'euro', 'usd', 'dollar', 'chf', 'kartyaval', 'kartya', 'kartyas', 'keszpenzzel', 'keszpenz', 'kp', 'cash', 'ma', 'tegnap', 'tegnapelott', 'fizettem', 'volt', 'voltam', 'voltunk', 'be', 'ba', 'ben', 'ban', 'bol', 'bol', 'rol', 'ra', 're', 'nal', 'nel', 'ott', 'itt', 'most', 'kb', 'kozel', 'osszesen', 'kaptam', 'koltottem', 'koltes', 'utan', 'mert', 'hogy', 'kifizettem', 'rendeltem', 'ettem', 'ittam', 'en', 'nekem', 'szamara', 'pedig', 'aztan', 'plusz', 'dbt', 'db', 'darab', 'jott', 'erkezett', 'atutaltam', 'utaltam', 'het', 'mult', 'mulhet', 'heten', 'napon', 'nap', 'ejjel', 'reggel', 'delben', 'este', 'delutan']);
+
+function learnedCats() {
+  const m = new Map();
+  S.cash.forEach(c => { if (!c.cat || c.cat === 'Egyeztetés') return; norm(c.desc).split(/[^a-z0-9&]+/).filter(w => w.length > 2 && !STOP.has(w)).forEach(w => {
+    const k = w.replace(/t$/, ''); const o = m.get(k) || {}; o[c.cat] = (o[c.cat] || 0) + 1; m.set(k, o);
+  }); });
+  return m;
+}
+function pastWeekday(dow) { const d = new Date(); const diff = (d.getDay() - dow + 7) % 7; d.setDate(d.getDate() - diff); return d; }
+const isoLocal = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+function findDate(n) {
+  const now = new Date();
+  if (/\btegnapelott\b/.test(n)) { const d = new Date(); d.setDate(d.getDate() - 2); return { d: isoLocal(d), re: /\btegnapelott\b/ }; }
+  if (/\btegnap\b/.test(n)) { const d = new Date(); d.setDate(d.getDate() - 1); return { d: isoLocal(d), re: /\btegnap\b/ }; }
+  if (/\bma\b/.test(n)) return { d: today(), re: /\bma\b/ };
+  const days = [['vasarnap', 0], ['hetfo', 1], ['kedd', 2], ['szerda', 3], ['csutortok', 4], ['pentek', 5], ['szombat', 6]];
+  for (const [w, i] of days) { const re = new RegExp('\\b(mult\\s+)?' + w + '[a-z]*\\b'); const m = n.match(re); if (m) { const d = pastWeekday(i); if (m[1]) d.setDate(d.getDate() - 7); return { d: isoLocal(d), re }; } }
+  let m = n.match(/\b(20\d\d)[.\-/ ]+(\d{1,2})[.\-/ ]+(\d{1,2})\.?/);
+  if (m) return { d: `${m[1]}-${pad(m[2])}-${pad(m[3])}`, re: m[0] };
+  m = n.match(/\b(jan|feb|marc?|apr|maj|jun|jul|aug|szept?|sep|okt|oct|nov|dec)[a-z]*\.?\s*(\d{1,2})\b\.?(-?[a-z]*)?/);
+  if (m) { let y = now.getFullYear(); const mo = MONTHS_N[m[1]]; if (mo > now.getMonth() + 1) y--; return { d: `${y}-${pad(mo)}-${pad(m[2])}`, re: m[0] }; }
+  m = n.match(/\b(\d{1,2})\.\s?(\d{1,2})\.(?!\d)/);
+  if (m && +m[1] <= 12 && +m[2] <= 31) { let y = now.getFullYear(); if (+m[1] > now.getMonth() + 1) y--; return { d: `${y}-${pad(m[1])}-${pad(m[2])}`, re: m[0] }; }
+  return null;
+}
+function findAmount(n) {
+  const re = /(\d{1,3}(?:[ .]\d{3})+(?!\d)|\d+(?!\d))(?:[.,](\d{1,2})(?!\d))?\s*(?:(k|e|ezer|m|millio|mio)(?![a-z]))?\s*(ft|huf|forint\w*|€|eur\w*|\$|usd|dollar\w*|chf|frank\w*)?/g;
+  let best = null, m;
+  while ((m = re.exec(n))) {
+    let v = Number(m[1].replace(/[ .]/g, '') + (m[2] ? '.' + m[2] : ''));
+    const mult = m[3]; if (mult === 'k' || mult === 'e' || mult === 'ezer') v *= 1000; else if (mult) v *= 1e6;
+    const c = m[4] ? (/^(ft|huf|forint)/.test(m[4]) ? 'HUF' : /^(€|eur)/.test(m[4]) ? 'EUR' : /^(\$|usd|dollar)/.test(m[4]) ? 'USD' : 'CHF') : '';
+    const score = (c ? 2 : 0) + (mult ? 1 : 0) + Math.log10(v + 1) / 10;
+    if (v > 0 && (!best || score > best.score)) best = { v, ccy: c, score, raw: m[0] };
+  }
+  if (!best) { const c2 = n.match(/(€|\$)\s*(\d+(?:[.,]\d{1,2})?)/); if (c2) best = { v: Number(c2[2].replace(',', '.')), ccy: c2[1] === '€' ? 'EUR' : 'USD', raw: c2[0] }; }
+  return best;
+}
+function findAccounts(n, ccy) {
+  const hits = [];
+  S.accounts.forEach(a => {
+    const words = norm(a.name).split(/\s+/); const key = words[0];
+    let i = n.search(new RegExp('\\b' + key.replace(/[^a-z0-9]/g, '') + '[a-z]*'));
+    if (key === 'keszpenz' && i < 0) i = n.search(/\b(kp|cash|keszpenz\w*)\b/);
+    if (i >= 0) { const second = words[1] && n.includes(words[1]); hits.push({ a, i, exact: !!second }); }
+  });
+  // több azonos előtagú számla (Wise EUR / Wise USD): pénznem vagy pontos név szerint
+  const byPos = new Map();
+  hits.forEach(h => { const prev = byPos.get(h.i); if (!prev || h.exact || (!prev.exact && ccy && up(h.a.ccy) === ccy)) byPos.set(h.i, h); });
+  return [...byPos.values()].sort((x, y) => x.i - y.i).map(h => h.a.name);
+}
+function cardAccount() {
+  const cnt = {}; S.cash.filter(c => c.type === 'Kiadás' && c.acct).forEach(c => { const a = S.accounts.find(x => x.name === c.acct); if (a && a.type !== 'Készpénz' && up(a.ccy) === 'HUF') cnt[c.acct] = (cnt[c.acct] || 0) + 1; });
+  const best = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+  return best ? best[0] : (S.accounts.find(a => a.type === 'Bankszámla' && up(a.ccy) === 'HUF') || {}).name || '';
+}
+function guessCat(n, type, learned) {
+  const words = n.split(/[^a-z0-9&]+/).filter(w => w.length > 1);
+  const score = {};
+  words.forEach(w => { const o = learned.get(w.replace(/t$/, '')); if (o) Object.entries(o).forEach(([k, v]) => score[k] = (score[k] || 0) + v * 3); });
+  const padded = ' ' + n + ' ';
+  CAT_KEYWORDS.forEach(([cat, kws]) => kws.forEach(k => { if (padded.includes(k.length <= 3 ? ' ' + k.trim() + ' ' : k)) score[cat] = (score[cat] || 0) + 2; }));
+  const incomeCats = ['Munkabér', 'Ösztöndíj', 'Egyéb bevétel'];
+  const allowed = Object.entries(score).filter(([k]) => cats().includes(k) && (type === 'Bevétel') === incomeCats.includes(k)).sort((a, b) => b[1] - a[1]);
+  if (allowed.length) return allowed[0][0];
+  return type === 'Bevétel' && cats().includes('Egyéb bevétel') ? 'Egyéb bevétel' : '';
+}
+function makeDesc(orig, n, cat) {
+  let brand = ''; for (const [k, v] of Object.entries(BRANDS)) { if (new RegExp('(^|[^a-z])' + k.replace(/[&]/g, '\\&') + '([^a-z]|$)').test(n)) { brand = v; break; } }
+  const accNames = S.accounts.map(a => norm(a.name).split(/\s+/)[0]);
+  const words = orig.replace(/\d+(?:[ .]\d{3})*(?:[.,]\d+)?\s*(?:k|e|ezer|m)?(?![a-zá-ű])/gi, ' ').split(/[\s,;:!?()]+/).filter(w => w && !/\d/.test(w));
+  const kept = words.filter(w => { const x = norm(w).replace(/[^a-z0-9&-]/g, ''); const base = x.split('-')[0];
+    return base.length > 1 && !STOP.has(base) && !STOP.has(x) && !accNames.some(a => base.startsWith(a)) && !(brand && BRANDS[base] === brand) && !/^(hetfo|kedd|szerda|csutortok|pentek|szombat|vasarnap|jan|feb|mar|apr|maj|jun|jul|aug|szep|okt|nov|dec)/.test(base) && !/^(ert|be|ba|ban|ben)$/.test(base); })
+    .map(w => w.replace(/-(ért|ben|ban|be|ba|ból|ből|ról|ről|ra|re|nál|nél)$/i, '').replace(/([aáeéiíoóöőuúüű])t$/i, '$1').replace(/á$/, 'a'));
+  let d = kept.slice(0, 5).join(' ');
+  if (!d && brand) return brand;
+  if (!d) d = cat || '';
+  d = d.charAt(0).toUpperCase() + d.slice(1);
+  return brand ? `${d} (${brand})` : d;
+}
+function localParse(text) {
+  const learned = learnedCats(), def = defaultAcct();
+  const parts = text.split(/\s*(?:[;\n]|,(?!\d)|\s(?:es|és|meg|aztan|aztán|plusz)\s)\s*/i).filter(s => s.trim());
+  const segs = []; let carry = '';
+  parts.forEach(p => { const t = (carry ? carry + ' és ' : '') + p; if (findAmount(norm(p))) { segs.push(t); carry = ''; } else carry = t; });
+  if (carry && segs.length) segs[segs.length - 1] += ' ' + carry; else if (carry) segs.push(carry);
+  let lastDate = null, lastAcct = null;
+  return segs.map(seg => {
+    let n = norm(seg);
+    const dt = findDate(n); if (dt) { lastDate = dt.d; n = n.replace(dt.re, ' '); }
+    const amt = findAmount(n); if (!amt) return null;
+    let type = TRANSFER_WORDS.some(w => n.includes(w)) ? 'Átvezetés' : INCOME_WORDS.some(w => n.includes(w)) ? 'Bevétel' : 'Kiadás';
+    const accs = findAccounts(n, amt.ccy);
+    if (accs.length >= 2 && type !== 'Bevétel') type = 'Átvezetés';
+    let acct = accs[0] || (/\bkartya/.test(n) ? cardAccount() : '') || lastAcct || def;
+    if (accs[0] || /\bkartya/.test(n)) lastAcct = acct;
+    const toAcct = type === 'Átvezetés' ? (accs[1] || '') : '';
+    const a = S.accounts.find(x => x.name === acct);
+    const ccy = amt.ccy || (a ? up(a.ccy) : 'HUF');
+    const cat = type === 'Átvezetés' ? '' : guessCat(n, type, learned);
+    return { type, amount: amt.v, ccy, date: lastDate || today(), cat, desc: makeDesc(seg, n, cat) || (type === 'Átvezetés' ? 'Átvezetés' : ''), acct, toAcct };
+  }).filter(Boolean);
+}
+
+/* ----- Smart entry UI ----- */
 function defaultAcct() {
   const recent = [...S.cash].filter(c => c.type === 'Kiadás' && c.acct).sort((a, b) => (b.date || '').localeCompare(a.date || '') || num(b.created) - num(a.created))[0];
   return recent ? recent.acct : (S.accounts[0] ? S.accounts[0].name : '');
 }
 function quickBar() {
-  if (!sample || S.mode !== 'live') return '';
+  if (S.mode !== 'live') return '';
   const items = ui.qItems;
   const line = (c, i) => {
     const ccy = up(c.ccy) || 'HUF', sign = c.type === 'Bevétel' ? '+' : c.type === 'Kiadás' ? '−' : '';
@@ -606,7 +733,7 @@ function quickBar() {
       <div class="r-end"><b class="${c.type === 'Bevétel' ? 't-pos' : ''}">${sign}${amt}</b><span>${esc(c.type)}</span></div></button>`;
   };
   return `<div class="qbox">
-    <form class="quick" data-form="quick">${I.spark}<input id="qIn" autocomplete="off" placeholder="Írd le, mi történt, pl. vettem egy cipőt a H&amp;M-ben 5000-ért" value="${esc(ui.qText)}" ${ui.qBusy ? 'disabled' : ''} aria-label="Gyors rögzítés">
+    <form class="quick" data-form="quick">${I.spark}<input id="qIn" autocomplete="off" placeholder="Mit vettél? pl. tegnap kínai kaja 2500 kártyával, kávé 650" value="${esc(ui.qText)}" ${ui.qBusy ? 'disabled' : ''} aria-label="Gyors rögzítés">
       <button class="btn sm ${ui.qBusy ? 'busy' : ''}" type="submit" ${ui.qBusy ? 'disabled' : ''}>${ui.qBusy ? 'Értelmezem…' : 'Feldolgozás'}</button></form>
     ${ui.qErr ? `<div class="qnote err">${esc(ui.qErr)}</div>` : ''}
     ${items && items.length ? `<div class="qprev"><div class="group-h" style="text-transform:none">Ellenőrizd, aztán rögzítsd<span class="hide-sm">koppints egy tételre a módosításhoz</span></div>
@@ -628,45 +755,13 @@ function cleanItem(o, defAcct) {
   return { type, amount, ccy, date, cat, desc: String(o.desc || '').trim().slice(0, 80), acct, toAcct: type === 'Átvezetés' ? findAcct(o.toAcct) : '' };
 }
 async function quickParse() {
-  const text = ui.qText.trim(); if (!text || ui.qBusy) return;
-  ui.qBusy = true; ui.qErr = ''; ui.qItems = null; render();
-  const now = new Date(), def = defaultAcct();
-  const prompt = `Egy magyar nyelvű, személyes pénzügyi bejegyzést alakítasz strukturált adattá egy kiadáskövető apphoz.
-
-Mai dátum: ${today()} (${DAYS[now.getDay()]})
-Kategóriák (csak ezekből választhatsz, vagy üres string, ha egyik sem illik): ${JSON.stringify(cats())}
-Számlák (név és pénznem): ${JSON.stringify(S.accounts.map(a => ({ name: a.name, ccy: up(a.ccy) })))}
-Alapértelmezett számla, ha a szöveg nem utal számlára: ${JSON.stringify(def)}
-
-A felhasználó szövege (a két vonal között):
------
-${text.slice(0, 2000)}
------
-
-Válaszolj kizárólag egy JSON tömbbel, minden pénzmozgásra egy objektummal ebben a formában:
-{"type":"Kiadás","amount":5000,"ccy":"HUF","date":"${today()}","cat":"Ruházat","desc":"Cipő (H&M)","acct":${JSON.stringify(def)},"toAcct":""}
-
-Szabályok:
-- type: "Kiadás", "Bevétel" vagy "Átvezetés" (saját számlák közötti mozgás, ilyenkor acct a forrás, toAcct a cél).
-- amount pozitív szám. "5e", "5k", "5 ezer" = 5000; "1,5 M" = 1500000.
-- ccy: HUF, EUR, USD vagy CHF; ha nincs megadva, a választott számla pénzneme, ennek hiányában HUF.
-- date: YYYY-MM-DD. A relatív dátumokat ("tegnap", "hétfőn", "múlt pénteken") a mai dátumhoz képest számold, a múltba. Ha nincs dátum, a mai nap.
-- acct: a számlák egyike. "kártyával" vagy egy bank neve esetén a megfelelő bankszámla, "készpénzzel" esetén a készpénz számla; egyébként az alapértelmezett.
-- desc: rövid, nagybetűvel kezdődő leírás, a bolt nevével zárójelben, ha van.
-- Ha a szöveg több tételt említ, mindegyik külön objektum. Ha nem pénzügyi bejegyzés, üres tömb: [].`;
-  try {
-    const res = await sample.json(prompt, { modelTier: 'quick', cache: false });
-    const arr = (Array.isArray(res) ? res : [res]).map(o => cleanItem(o, def)).filter(Boolean);
-    if (!arr.length) ui.qErr = 'Nem találtam benne összeget. Írd le, mit, mennyiért és mikor vettél.';
-    else ui.qItems = arr;
-  } catch (e) {
-    const c = e && e.code;
-    ui.qErr = c === 'not_granted' || c === 'sampling_disabled' ? 'Az okos rögzítéshez engedélyezned kell, hogy az app Claude-ot használjon. Töltsd újra az oldalt, és a felugró ablakban engedélyezd.'
-      : c === 'rate_limited' ? 'Most túl sok kérés ment ki. Próbáld újra egy perc múlva.'
-      : c === 'session_expired' ? 'Lejárt a bejelentkezés. Jelentkezz be újra a claude.ai-on.'
-      : 'Nem sikerült értelmezni. Próbáld újra, vagy fogalmazd meg kicsit másképp.';
-  }
-  ui.qBusy = false; render();
+  const text = ui.qText.trim(); if (!text) return;
+  ui.qErr = ''; ui.qItems = null;
+  const def = defaultAcct();
+  const arr = localParse(text).map(o => cleanItem(o, def)).filter(Boolean);
+  if (!arr.length) ui.qErr = 'Nem találtam benne összeget. Írd le, mit, mennyiért (és ha nem ma, mikor) vettél, például: „tegnap ebéd 3200 kártyával”.';
+  else ui.qItems = arr;
+  render();
   if (ui.qItems) { const b = document.querySelector('[data-act="q-save"]'); if (b) b.focus(); }
 }
 async function quickSave() {
