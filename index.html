@@ -731,6 +731,7 @@ function dueRecurring() {
   (rules().recurring || []).forEach((it, idx) => {
     let y = +(it.start || td).slice(0, 4), m = +(it.start || td).slice(5, 7);
     while (y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth() + 1)) {
+      if (it.end && `${y}-${pad(m)}` > it.end) break;
       const ym = `${y}-${pad(m)}`, day = Math.min(num(it.day) || 1, new Date(y, m, 0).getDate()), date = `${ym}-${pad(day)}`;
       if (date <= td && !(it.skip || []).includes(ym)) {
         const booked = S.cash.some(c => (c.date || '').slice(0, 7) === ym && c.type === it.type && c.cat === it.cat && low(c.acct) === low(it.acct));
@@ -1065,7 +1066,7 @@ function rulesSettings(RL, accOpts) {
   </section>
   <section class="card">
     <div class="card-h"><h2>Ismétlődő tételek</h2><span class="faint">esedékességkor az Áttekintésen felajánlja</span></div>
-    <div class="list">${(RL.recurring || []).map((r, i) => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:default"><div class="r-main"><b>${esc(r.desc)} · ${r.type === 'Bevétel' ? '+' : '−'}${money(num(r.amount), r.ccy)}</b><span>minden hónap ${num(r.day)}. · ${esc(r.cat)} · ${esc(r.acct)}</span></div><button class="btn ghost sm" data-act="rr-del" data-i="${i}">Törlés</button></div>`).join('') || '<p class="muted">Még nincs ismétlődő tétel.</p>'}</div>
+    <div class="list">${(RL.recurring || []).map((r, i) => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:default"><div class="r-main"><b>${esc(r.desc)} · ${r.type === 'Bevétel' ? '+' : '−'}${money(num(r.amount), r.ccy)}</b><span>minden hónap ${num(r.day)}.${r.end ? ' · ' + r.end.replace('-', '. ') + '. hónapig' : ''} · ${esc(r.cat)} · ${esc(r.acct)}</span></div><button class="btn ghost sm" data-act="rr-del" data-i="${i}">Törlés</button></div>`).join('') || '<p class="muted">Még nincs ismétlődő tétel.</p>'}</div>
     <form class="form" data-form="rr-add" style="margin-top:12px">
       <div class="field"><label for="rrD">Megnevezés</label><input id="rrD" placeholder="pl. Spotify" maxlength="40" required></div>
       <div class="field"><label for="rrT">Típus</label><select id="rrT">${opt(['Kiadás', 'Bevétel'], 'Kiadás')}</select></div>
@@ -1074,6 +1075,7 @@ function rulesSettings(RL, accOpts) {
       <div class="field"><label for="rrM">Összeg</label><input id="rrM" inputmode="decimal" required></div>
       <div class="field"><label for="rrY">Pénznem</label><select id="rrY">${opt(CCYS, 'HUF')}</select></div>
       <div class="field"><label for="rrN">Hónap hányadik napján</label><input id="rrN" type="number" min="1" max="31" value="1"></div>
+      <div class="field"><label for="rrE">Utolsó hónap (nem kötelező)</label><input id="rrE" type="month"></div>
       <div class="full"><button class="btn sm" type="submit">Ismétlődő tétel hozzáadása</button></div>
     </form>
   </section>`;
@@ -1540,7 +1542,7 @@ document.addEventListener('submit', async e => {
   }
   if (e.target.dataset.form === 'rr-add') {
     const amount = num(fv('rrM')); if (!(amount > 0)) return toast('Adj meg összeget.');
-    const r = rules(); r.recurring = [...(r.recurring || []), { desc: fv('rrD').trim(), type: fv('rrT'), cat: fv('rrC'), acct: fv('rrA'), amount, ccy: fv('rrY'), day: Math.min(31, Math.max(1, num(fv('rrN')) || 1)), start: today().slice(0, 7), skip: [] }];
+    const r = rules(); r.recurring = [...(r.recurring || []), { desc: fv('rrD').trim(), type: fv('rrT'), cat: fv('rrC'), acct: fv('rrA'), amount, ccy: fv('rrY'), day: Math.min(31, Math.max(1, num(fv('rrN')) || 1)), start: today().slice(0, 7), end: fv('rrE') || '', skip: [] }];
     if (await saveConfig({ rules: r })) toast('Ismétlődő tétel elmentve'); return;
   }
   if (e.target.dataset.form === 'cat-add') { const v = fv('catNew').trim(); if (!v) return; if (cats().some(c => low(c) === low(v))) return toast('Ez a kategória már létezik'); await saveConfig({ categories: [...cats(), v] }); }
