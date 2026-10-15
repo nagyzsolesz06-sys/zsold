@@ -14,7 +14,10 @@ const DEFAULT_SOURCES = {
   'BTC/EUR': 'coingecko:bitcoin',
 };
 
-const log = (...a) => console.log(...a);
+const GH = !!process.env.GITHUB_ACTIONS;
+const fmt = a => a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ');
+const log = (...a) => console.log(fmt(a));
+const note = (...a) => console.log(GH ? `::notice::${fmt(a)}` : fmt(a)); // a GitHub felületén is látszik
 const iso = d => d.toISOString().slice(0, 10);
 const daysAgo = n => { const d = new Date(); d.setUTCDate(d.getUTCDate() - n); return iso(d); };
 
@@ -110,7 +113,7 @@ const resolveSource = inst => (inst.source && !inst.source.startsWith('yahoo:'))
 /* ---------- Futás ---------- */
 let failures = 0;
 async function step(name, fn) {
-  try { await fn(); } catch (e) { failures++; console.error(`✗ ${name}: ${e.message}`); }
+  try { await fn(); } catch (e) { failures++; console.log(GH ? `::error::${name}: ${e.message}` : `✗ ${name}: ${e.message}`); }
 }
 
 log(DRY ? '— Próbaüzem (nincs adatbázis-írás) —' : '— Éles futás —');
@@ -119,7 +122,7 @@ await step('MNB', async () => {
   let start = daysAgo(10);
   if (!DRY) { const last = await sbGet('fx_rates?select=d&order=d.desc&limit=1'); if (last[0]) start = last[0].d; }
   const rows = await mnbRates(start, iso(new Date()));
-  log(`✓ MNB: ${rows.length} nap ${start} óta`, rows.slice(-1)[0] || '');
+  note(`✓ MNB: ${rows.length} nap ${start} óta`, rows.slice(-1)[0] || '');
   await sbUpsert('fx_rates', rows, 'd');
 });
 
@@ -132,14 +135,14 @@ for (const inst of instruments) {
   if (!src) { log(`– ${inst.ticker}: nincs árforrás beállítva, kihagyva`); continue; }
   await step(inst.ticker, async () => {
     const q = await quote(src);
-    log(`✓ ${inst.ticker} (${src}): ${q.price} @ ${q.date}`);
+    note(`✓ ${inst.ticker} (${src}): ${q.price} @ ${q.date}`);
     await sbPatch('instruments', `id=eq.${inst.id}`, { price: q.price, price_at: new Date().toISOString(), source: src });
     // Előzmények: első alkalommal visszamenőleg (Stooq 5 év, CoinGecko 1 év), utána csak a mai nap.
     let hist = [{ d: q.date, price: q.price }];
     const have = DRY ? [] : await sbGet(`price_history?select=d&user_id=eq.${inst.user_id}&ticker=eq.${encodeURIComponent(inst.ticker)}&limit=40`);
     if (have.length < 30) {
-      try { const h = await history(src, daysAgo(5 * 365)); log(`  ${inst.ticker}: ${h.length} napos előzmény`); hist = h.concat(hist); }
-      catch (e) { log(`  ${inst.ticker}: előzmény nem érhető el (${e.message})`); }
+      try { const h = await history(src, daysAgo(5 * 365)); note(`${inst.ticker}: ${h.length} napos előzmény`); hist = h.concat(hist); }
+      catch (e) { note(`${inst.ticker}: előzmény nem érhető el (${e.message})`); }
     }
     const uniq = new Map(hist.map(x => [x.d, x]));
     await sbUpsert('price_history', [...uniq.values()].map(x => ({ user_id: inst.user_id, ticker: inst.ticker, d: x.d, price: x.price })), 'user_id,ticker,d');
