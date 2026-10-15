@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Zsold">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon.svg?v=4" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -322,7 +322,7 @@ img{max-width:100%}[hidden]{display:none!important}
 <body>
 <section class="login" id="login" hidden>
   <form class="login-card" id="lgForm">
-    <div class="brand"><img class="brand-mark" src="icon.svg" alt=""><span class="brand-txt">Zsold<small>Portfóliókövető</small></span></div>
+    <div class="brand"><img class="brand-mark" src="icon.svg?v=4" alt=""><span class="brand-txt">Zsold<small>Portfóliókövető</small></span></div>
     <div><h1>Belépés</h1><p>A Zsold csak a saját fiókoddal nyílik meg.</p></div>
     <div class="field"><label for="lgEmail">E-mail cím</label><input id="lgEmail" type="email" autocomplete="username" required></div>
     <div class="field"><label for="lgPw">Jelszó</label><input id="lgPw" type="password" autocomplete="current-password" required></div>
@@ -333,7 +333,7 @@ img{max-width:100%}[hidden]{display:none!important}
 
 <div class="app" hidden>
   <aside class="side">
-    <div class="brand"><img class="brand-mark" src="icon.svg" alt=""><span class="brand-txt">Zsold<small>Portfóliókövető</small></span></div>
+    <div class="brand"><img class="brand-mark" src="icon.svg?v=4" alt=""><span class="brand-txt">Zsold<small>Portfóliókövető</small></span></div>
     <nav class="nav" id="sideNav"></nav>
     <div class="side-foot"><span class="live-dot" id="liveDot"></span><span id="liveTxt">Kapcsolódás…</span></div>
   </aside>
@@ -346,17 +346,6 @@ img{max-width:100%}[hidden]{display:none!important}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
-<script>
-// Logó-előnézet: zsold.app/?logo=1 | 2 | 3 (megjegyzi), ?logo=0 visszaállít
-(() => {
-  let n = null;
-  try { const q = new URLSearchParams(location.search).get('logo'); if (q !== null) { if (['1','2','3','4'].includes(q)) localStorage.setItem('zsold.logo', q); else localStorage.removeItem('zsold.logo'); } n = localStorage.getItem('zsold.logo'); } catch {}
-  if (!n) return;
-  const src = `logo-${n}.svg`;
-  const apply = () => { document.querySelectorAll('img.brand-mark').forEach(i => i.src = src); const l = document.querySelector('link[rel=icon]'); if (l) l.href = src; };
-  apply(); new MutationObserver(apply).observe(document.body, { childList: true, subtree: true });
-})();
-</script>
 <script>
 (() => {
 'use strict';
