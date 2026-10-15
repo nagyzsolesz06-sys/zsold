@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Zsold Portfóliókövető</title>
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#0b0c10" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#f5f5f7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Zsold">
 <link rel="manifest" href="manifest.webmanifest">
@@ -14,7 +13,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* Layout: fixed left rail on desktop, bottom tab bar on phones; one content column of cards with a big-number hero, Lightyear-style. */
 :root{
@@ -24,23 +23,9 @@
   --pos:#0a8a55; --pos-bg:#e3f4ec; --neg:#d23a3a; --neg-bg:#fbe9e9; --warn:#a86a00; --warn-bg:#fdf1dc;
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
   --scrim:rgba(13,15,20,.42); --shadow:0 1px 2px rgba(13,15,20,.06),0 8px 24px rgba(13,15,20,.06);
-  --font:"Hanken Grotesk",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   --r-lg:22px; --r-md:14px;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0b0c10; --surface:#15171d; --surface-2:#1e2128; --chip-on:#2a2e37; --line:#262931;
-  --fg:#f2f3f6; --fg-2:#a4a9b5; --fg-3:#6e7380;
-  --primary:#f2f3f6; --on-primary:#0b0c10;
-  --pos:#35c487; --pos-bg:#10291f; --neg:#ff6b6b; --neg-bg:#2e1617; --warn:#f0b54a; --warn-bg:#2d2312;
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
-  --scrim:rgba(0,0,0,.6); --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35); color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0b0c10; --surface:#15171d; --surface-2:#1e2128; --chip-on:#2a2e37; --line:#262931;
-  --fg:#f2f3f6; --fg-2:#a4a9b5; --fg-3:#6e7380;
-  --primary:#f2f3f6; --on-primary:#0b0c10;
-  --pos:#35c487; --pos-bg:#10291f; --neg:#ff6b6b; --neg-bg:#2e1617; --warn:#f0b54a; --warn-bg:#2d2312;
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
-  --scrim:rgba(0,0,0,.6); --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35); color-scheme:dark}
 
 *{box-sizing:border-box}
 html,body{min-height:100%}
@@ -243,6 +228,59 @@ details.more summary::before{content:"+ "} details.more[open] summary::before{co
 #tip b{font-weight:700}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:70;background:var(--fg);color:var(--bg);padding:11px 18px;border-radius:999px;font-weight:600;font-size:14px;box-shadow:var(--shadow)}
 
+
+/* ===== Zsold téma: letisztult világos, bordázott zöld kártya, lime hangsúlyok ===== */
+
+:root{--bg:#f5f5f7;--surface:#ffffff;--surface-2:#f2f4f1;--chip-on:#ffffff;--line:#e8e8ed;--fg:#1d1d1f;--fg-2:#6e6e73;--fg-3:#a1a1a6;--primary:#12804f;--on-primary:#fff;--pos:#12804f;--pos-bg:#e3f5ea;--s1:#1f9d63;--s7:#9fe0bf;color-scheme:light;--shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.05)}
+body{font-family:var(--font);letter-spacing:-.005em}
+.side{background:#fbfbfd;border-right:1px solid #ececf0}
+.nav button{font-weight:500;color:#424245}
+.nav button[aria-current="page"]{background:#e3f5ea;color:#0f5f3a;font-weight:600}
+.brand{font-weight:700;letter-spacing:-.02em}
+.ph h1{font-weight:700;font-size:36px;letter-spacing:-.03em}
+.card{border:0;box-shadow:var(--shadow);border-radius:24px;padding:24px}
+.card h2{font-weight:600;letter-spacing:-.02em;font-size:19px}
+.tile{border:0;background:var(--surface-2)!important;border-radius:18px}
+.tile b{font-weight:600;letter-spacing:-.03em;font-size:26px}
+.tile span{font-weight:500}
+.quick{border:0;box-shadow:var(--shadow);background:#fff}
+.btn{font-weight:600}
+.big{font-weight:700;letter-spacing:-.045em;font-size:clamp(48px,6.5vw,68px)}
+.big small{font-weight:600;letter-spacing:0}
+.eyebrow{font-weight:600;letter-spacing:.04em}
+.hero{background:radial-gradient(120% 140% at 85% 0%,#5fe0a6 0%,#1f9d63 38%,#0e3b2a 100%);color:#fff;border-radius:28px;padding:30px 32px 28px;box-shadow:0 10px 30px rgba(14,59,42,.18)}
+.hero .eyebrow,.hero .muted,.hero .split-legend div{color:#d6f2e5}
+.hero .split-legend b{color:#fff}
+.hero .pill.pos{background:rgba(255,255,255,.18);color:#fff}
+.hero .split-bar{background:rgba(255,255,255,.15)}
+.hero .split-bar i:nth-child(1){background:#fff}.hero .split-bar i:nth-child(2){background:#9fe0bf}
+.hero .dot[style*="--s1"]{background:#fff!important}.hero .dot[style*="--s7"]{background:#9fe0bf!important}
+.hero .big small{color:#d6f2e5}
+.sel{border-color:#e8e8ed}
+.hero{position:relative;overflow:hidden;background:linear-gradient(115deg,#062a1d 0%,#0b5a3b 35%,#1aa36a 62%,#7fe8b8 82%,#0d6b45 100%)}
+.hero::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.10) 0px,rgba(255,255,255,0) 7px,rgba(0,0,0,.18) 14px,rgba(255,255,255,.06) 22px);mix-blend-mode:overlay;pointer-events:none}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 90% at 75% 40%,rgba(160,255,210,.35),transparent 70%);pointer-events:none}
+.hero>*{position:relative;z-index:1}
+:root{--primary:#0b5a3b;--on-primary:#fff;--pos:#12804f;--pos-bg:#e3f5ea;--s1:#1f9d63;--s3:#1f9d63}
+.nav button[aria-current="page"]{background:#0b5a3b;color:#fff}
+.seg button[aria-pressed="true"]{background:#0b5a3b;color:#fff}
+
+/* lime hangsúlyok */
+.hero .pill.pos{background:#d7ff3a;color:#0b2a1c}
+.hero .pill.neg{background:#ffd9d9;color:#8a1c1c}
+.quick .btn{background:#d7ff3a;color:#0b2a1c}
+.quick svg{stroke:#7cc41f}
+
+.recrow{grid-template-columns:40px minmax(0,1fr) auto}
+.rec-act{display:flex;gap:8px}
+.split-legend b{white-space:nowrap}
+@media (max-width:520px){
+  .recrow{grid-template-columns:40px minmax(0,1fr)}
+  .rec-act{grid-column:2}
+  .split-legend{flex-direction:column;gap:8px}
+  .split-legend div{width:100%}
+  .split-legend b{margin-left:auto}
+}
 @media (max-width:1000px){ .tiles{grid-template-columns:repeat(2,minmax(0,1fr))} .grid{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:860px){
   .app{grid-template-columns:minmax(0,1fr)}
@@ -746,10 +784,10 @@ function recurringCard() {
   const due = dueRecurring(); if (!due.length) return '';
   return `<section class="qprev"><div class="group-h" style="text-transform:none">Esedékes ismétlődő tételek<span>${due.length} db</span></div><div class="list">
     ${due.map(d => { const c = d.item, sign = c.type === 'Bevétel' ? '+' : '−';
-      return `<div class="row" style="grid-template-columns:40px minmax(0,1fr) auto auto;cursor:default">${avatar(c.desc, c.type === 'Bevétel' ? 'var(--s3)' : '', 1)}
+      return `<div class="row recrow" style="cursor:default">${avatar(c.desc, c.type === 'Bevétel' ? 'var(--s3)' : '', 1)}
         <div class="r-main"><b>${esc(c.desc)} · <i class="${c.type === 'Bevétel' ? 't-pos' : ''}" style="font-style:normal">${sign}${money(c.amount, c.ccy)}</i></b><span>${esc(c.cat)} · ${esc(c.acct)} · ${fDate(c.date)}</span></div>
-        <button class="btn ghost sm" data-act="rec-skip" data-i="${d.idx}" data-ym="${d.ym}">Kihagyás</button>
-        <button class="btn sm" data-act="rec-book" data-i="${d.idx}" data-ym="${d.ym}">Rögzítés</button></div>`; }).join('')}
+        <div class="rec-act"><button class="btn ghost sm" data-act="rec-skip" data-i="${d.idx}" data-ym="${d.ym}">Kihagyás</button>
+        <button class="btn sm" data-act="rec-book" data-i="${d.idx}" data-ym="${d.ym}">Rögzítés</button></div></div>`; }).join('')}
   </div></section>`;
 }
 
