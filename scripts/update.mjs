@@ -4,13 +4,14 @@
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ykbxsqtgrpmfpknwopqe.supabase.co';
 const KEY = process.env.SUPABASE_SECRET_KEY || '';
+const AV_KEY = process.env.ALPHAVANTAGE_KEY || '';
 const DRY = !KEY || process.env.DRY_RUN === 'true';
 const UA = 'Zsold-portfolio-tracker/1.0 (personal use; github.com/nagyzsolesz06-sys/zsold)';
 
 // Alapértelmezett árforrások tickerenként (az eszköz "source" mezője felülírja).
 const DEFAULT_SOURCES = {
-  'VWCE': 'stooq:vwce.de',
-  'EQQQ': 'stooq:eqqq.de',
+  'VWCE': 'alphavantage:VWCE.DEX',   // Xetra, EUR
+  'EQQQ': 'alphavantage:EQQQ.DEX',
   'BTC/EUR': 'coingecko:bitcoin',
 };
 
@@ -55,7 +56,7 @@ async function mnbRates(start, end) {
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:web="http://www.mnb.hu/webservices/">
   <soap:Body><web:GetExchangeRates><web:startDate>${start}</web:startDate><web:endDate>${end}</web:endDate><web:currencyNames>EUR,USD,CHF</web:currencyNames></web:GetExchangeRates></soap:Body>
 </soap:Envelope>`;
-  const r = await fetch('https://www.mnb.hu/arfolyamok.asmx', {
+  const r = await fetch('http://www.mnb.hu/arfolyamok.asmx', { // a https végpont SOAP-ra 404-et ad
     method: 'POST',
     headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '"http://www.mnb.hu/webservices/MNBArfolyamServiceSoap/GetExchangeRates"', 'User-Agent': UA },
     body,
@@ -80,18 +81,18 @@ function parseCsv(txt) {
   const lines = txt.trim().split(/\r?\n/); const head = lines.shift().split(',');
   return lines.map(l => Object.fromEntries(l.split(',').map((v, i) => [head[i], v])));
 }
-async function stooqQuote(sym) {
-  const r = await fetch(`https://stooq.com/q/l/?s=${encodeURIComponent(sym)}&f=sd2t2ohlcv&h&e=csv`, { headers: { 'User-Agent': UA } });
-  const rows = parseCsv(await r.text()); const row = rows[0] || {};
-  const p = Number(row.Close);
-  if (!r.ok || !isFinite(p) || p <= 0) throw new Error(`Stooq ${sym}: nincs ár (${JSON.stringify(row)})`);
-  return { price: p, date: row.Date };
+async function avQuote(sym) {
+  if (!AV_KEY) throw new Error('nincs ALPHAVANTAGE_KEY titok beállítva');
+  const r = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(sym)}&apikey=${AV_KEY}`, { headers: { 'User-Agent': UA } });
+  const j = await r.json(); const q = j['Global Quote'] || {}; const p = Number(q['05. price']);
+  if (!r.ok || !(p > 0)) throw new Error(`Alpha Vantage ${sym}: ${JSON.stringify(j).slice(0, 200)}`);
+  return { price: p, date: q['07. latest trading day'] || iso(new Date()) };
 }
-async function stooqHistory(sym, since) {
-  const r = await fetch(`https://stooq.com/q/d/l/?s=${encodeURIComponent(sym)}&d1=${since.replace(/-/g, '')}&i=d`, { headers: { 'User-Agent': UA } });
-  const txt = await r.text();
-  if (!r.ok || !/^Date,/.test(txt)) throw new Error(`Stooq előzmény ${sym}: ${txt.slice(0, 120)}`);
-  return parseCsv(txt).map(x => ({ d: x.Date, price: Number(x.Close) })).filter(x => x.price > 0);
+async function avHistory(sym) {
+  const r = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${encodeURIComponent(sym)}&outputsize=compact&apikey=${AV_KEY}`, { headers: { 'User-Agent': UA } });
+  const j = await r.json(); const ts = j['Time Series (Daily)'];
+  if (!r.ok || !ts) throw new Error(`Alpha Vantage előzmény ${sym}: ${JSON.stringify(j).slice(0, 200)}`);
+  return Object.entries(ts).map(([d, v]) => ({ d, price: Number(v['4. close']) })).filter(x => x.price > 0);
 }
 async function coingeckoQuote(id) {
   const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=eur&include_last_updated_at=true`, { headers: { 'User-Agent': UA, accept: 'application/json' } });
@@ -106,9 +107,9 @@ async function coingeckoHistory(id) {
   const byDay = new Map(); j.prices.forEach(([t, p]) => byDay.set(iso(new Date(t)), p));
   return [...byDay].map(([d, price]) => ({ d, price }));
 }
-const quote = src => { const [k, v] = src.split(':'); return k === 'stooq' ? stooqQuote(v) : k === 'coingecko' ? coingeckoQuote(v) : Promise.reject(new Error('ismeretlen forrás: ' + src)); };
-const history = (src, since) => { const [k, v] = src.split(':'); return k === 'stooq' ? stooqHistory(v, since) : coingeckoHistory(v); };
-const resolveSource = inst => (inst.source && !inst.source.startsWith('yahoo:')) ? inst.source : DEFAULT_SOURCES[inst.ticker] || '';
+const quote = src => { const [k, v] = src.split(':'); return k === 'alphavantage' ? avQuote(v) : k === 'coingecko' ? coingeckoQuote(v) : Promise.reject(new Error('ismeretlen forrás: ' + src)); };
+const history = (src, since) => { const [k, v] = src.split(':'); return k === 'alphavantage' ? avHistory(v) : coingeckoHistory(v); };
+const resolveSource = inst => (inst.source && !/^(yahoo|stooq):/.test(inst.source)) ? inst.source : DEFAULT_SOURCES[inst.ticker] || '';
 
 /* ---------- Futás ---------- */
 let failures = 0;
@@ -133,11 +134,16 @@ const instruments = DRY
 for (const inst of instruments) {
   const src = resolveSource(inst);
   if (!src) { log(`– ${inst.ticker}: nincs árforrás beállítva, kihagyva`); continue; }
+  if (src.startsWith('alphavantage:')) {
+    const day = new Date().getUTCDay(), ageH = inst.price_at ? (Date.now() - Date.parse(inst.price_at)) / 36e5 : 99;
+    if (day === 0 || day === 6) { log(`– ${inst.ticker}: hétvége, tőzsde zárva`); continue; }
+    if (ageH < 3.5) { log(`– ${inst.ticker}: ${ageH.toFixed(1)} órás ár, még friss (napi keret kímélése)`); continue; }
+  }
   await step(inst.ticker, async () => {
     const q = await quote(src);
     note(`✓ ${inst.ticker} (${src}): ${q.price} @ ${q.date}`);
     await sbPatch('instruments', `id=eq.${inst.id}`, { price: q.price, price_at: new Date().toISOString(), source: src });
-    // Előzmények: első alkalommal visszamenőleg (Stooq 5 év, CoinGecko 1 év), utána csak a mai nap.
+    // Előzmények: első alkalommal visszamenőleg (Alpha Vantage ~100 nap, CoinGecko 1 év), utána csak a mai nap.
     let hist = [{ d: q.date, price: q.price }];
     const have = DRY ? [] : await sbGet(`price_history?select=d&user_id=eq.${inst.user_id}&ticker=eq.${encodeURIComponent(inst.ticker)}&limit=40`);
     if (have.length < 30) {
