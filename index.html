@@ -347,6 +347,17 @@ img{max-width:100%}[hidden]{display:none!important}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script>
+// Logó-előnézet: zsold.app/?logo=1 | 2 | 3 (megjegyzi), ?logo=0 visszaállít
+(() => {
+  let n = null;
+  try { const q = new URLSearchParams(location.search).get('logo'); if (q !== null) { if (['1','2','3'].includes(q)) localStorage.setItem('zsold.logo', q); else localStorage.removeItem('zsold.logo'); } n = localStorage.getItem('zsold.logo'); } catch {}
+  if (!n) return;
+  const src = `logo-${n}.svg`;
+  const apply = () => { document.querySelectorAll('img.brand-mark').forEach(i => i.src = src); const l = document.querySelector('link[rel=icon]'); if (l) l.href = src; };
+  apply(); new MutationObserver(apply).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+<script>
 (() => {
 'use strict';
 /* ---------- helpers ---------- */
