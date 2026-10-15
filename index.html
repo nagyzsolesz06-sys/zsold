@@ -870,7 +870,7 @@ R.cash = () => {
 R.accounts = () => {
   if (!allLoaded()) return header('Számlák') + loadingBlock();
   const A = C.A;
-  return header('Számlák', `Egyenlegek az utolsó MNB árfolyamon (${fDate(lastFxDate()) || '–'})`, btnAdd('acct-new', 'Új számla')) + `
+  return header('Számlák', `Egyenlegek az utolsó MNB árfolyamon (${fDate(lastFxDate()) || '–'})`, `<button class="btn ghost" data-act="recon">Egyenlegek egyeztetése</button>` + btnAdd('acct-new', 'Új számla')) + `
   <section class="hero"><span class="eyebrow">Összesen</span><div class="big">${nf0.format(Math.round(A.total))}<small>Ft</small></div></section>
   ${A.list.length ? `<div class="acct-grid">${A.list.map(a => `
     <button class="acct" data-act="acct-edit" data-id="${esc(a.id)}">
@@ -1129,6 +1129,40 @@ async function cashSave(id, qi) {
   if (await put('cash', id || uid(), data)) { closeSheet(); toast(id ? 'Tétel mentve' : 'Tétel rögzítve'); }
 }
 
+function reconSheet() {
+  const list = C.A.list;
+  if (!list.length) return toast('Előbb vegyél fel egy számlát.');
+  const body = `<p class="muted" style="margin:0">Írd be minden számlánál a mostani, valós egyenleget (a bankappból). Ahol eltér a Zsoldtól, a különbséget egy „Egyeztetés” tételként könyvelem a mai napra. Amit üresen hagysz, azt nem módosítom.</p>
+    <div class="list" id="rcList">${list.map((a, i) => `
+      <div class="row" style="grid-template-columns:minmax(0,1fr) 150px;cursor:default">
+        <div class="r-main"><b>${esc(a.name)}</b><span>Zsold szerint: ${money(a.bal, a.ccy)}</span><span id="rcd-${i}" class="faint"></span></div>
+        <div class="field"><input id="rc-${i}" data-i="${i}" inputmode="decimal" placeholder="${esc(a.ccy)}" aria-label="${esc(a.name)} valós egyenlege"></div>
+      </div>`).join('')}</div>
+    ${field('rc-date', 'Könyvelés dátuma', `<input id="rc-date" type="date" value="${today()}">`)}`;
+  const footer = `<div class="right"><button class="btn ghost" data-act="sheet-close">Mégse</button><button class="btn" data-act="recon-save">Különbözetek könyvelése</button></div>`;
+  openSheet('Egyenlegek egyeztetése', body, footer, sh => {
+    const upd = () => list.forEach((a, i) => {
+      const v = fv('rc-' + i).trim(), out = document.getElementById('rcd-' + i);
+      if (v === '') { out.textContent = ''; return; }
+      const d = num(v) - a.bal;
+      out.textContent = Math.abs(d) < 0.005 ? 'Egyezik ✓' : `Különbözet: ${d > 0 ? '+' : '−'}${money(Math.abs(d), a.ccy)}`;
+      out.className = Math.abs(d) < 0.005 ? 't-pos' : d > 0 ? 't-pos' : 't-neg';
+    });
+    sh.addEventListener('input', upd);
+  });
+}
+async function reconSave() {
+  const date = fv('rc-date') || today(); let n = 0, k = 0;
+  for (const [i, a] of C.A.list.entries()) {
+    const v = fv('rc-' + i).trim(); if (v === '') continue;
+    const d = Math.round((num(v) - a.bal) * 100) / 100; if (Math.abs(d) < 0.005) continue;
+    const ok2 = await put('cash', uid(), { date, type: d < 0 ? 'Kiadás' : 'Bevétel', cat: 'Egyeztetés', desc: d < 0 ? 'Könyveletlen kiadások (egyeztetés)' : 'Könyveletlen bevételek (egyeztetés)', acct: a.name, toAcct: '', ccy: a.ccy, amount: Math.abs(d) });
+    if (ok2) n++; k++;
+  }
+  closeSheet();
+  toast(k ? `${n} számla egyeztetve` : 'Minden egyenleg egyezett, nem kellett könyvelni.');
+}
+
 function acctSheet(a) {
   const isNew = !a; a = a || { type: 'Bankszámla', ccy: 'HUF', opening: 0 };
   const body = `<div class="form">
@@ -1281,6 +1315,8 @@ document.addEventListener('click', async e => {
     case 'q-cancel': ui.qItems = null; ui.qErr = ''; render(); break;
     case 'q-save': b.disabled = true; await quickSave(); break;
     case 'acct-new': acctSheet(null); break;
+    case 'recon': reconSheet(); break;
+    case 'recon-save': b.disabled = true; await reconSave(); break;
     case 'acct-edit': acctSheet(S.accounts.find(x => x.id === b.dataset.id)); break;
     case 'acct-save': b.disabled = true; await acctSave(b.dataset.id); b.disabled = false; break;
     case 'inst': instSheet(b.dataset.tk); break;
