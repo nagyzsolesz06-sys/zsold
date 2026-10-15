@@ -1,0 +1,30 @@
+name: Árfolyamfrissítés
+
+on:
+  schedule:
+    - cron: '17 5-20 * * *'   # óránként 7:17 és 22:17 között (budapesti nyári idő szerint), minden nap
+  workflow_dispatch: {}        # kézi indítás: Actions → Árfolyamfrissítés → Run workflow
+  push:
+    branches: [main]
+    paths: ['scripts/update.mjs', '.github/workflows/update.yml']
+
+concurrency:
+  group: arfolyamfrissites
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Árfolyamok és árak frissítése
+        run: node scripts/update.mjs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
