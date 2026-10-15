@@ -19,6 +19,7 @@ const GH = !!process.env.GITHUB_ACTIONS;
 const fmt = a => a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ');
 const log = (...a) => console.log(fmt(a));
 const note = (...a) => console.log(GH ? `::notice::${fmt(a)}` : fmt(a)); // a GitHub felületén is látszik
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 const iso = d => d.toISOString().slice(0, 10);
 const daysAgo = n => { const d = new Date(); d.setUTCDate(d.getUTCDate() - n); return iso(d); };
 
@@ -137,7 +138,9 @@ for (const inst of instruments) {
   if (src.startsWith('alphavantage:')) {
     const day = new Date().getUTCDay(), ageH = inst.price_at ? (Date.now() - Date.parse(inst.price_at)) / 36e5 : 99;
     if (day === 0 || day === 6) { log(`– ${inst.ticker}: hétvége, tőzsde zárva`); continue; }
-    if (ageH < 3.5) { log(`– ${inst.ticker}: ${ageH.toFixed(1)} órás ár, még friss (napi keret kímélése)`); continue; }
+    const haveN = DRY ? 0 : (await sbGet(`price_history?select=d&user_id=eq.${inst.user_id}&ticker=eq.${encodeURIComponent(inst.ticker)}&limit=40`)).length;
+    if (ageH < 3.5 && haveN >= 30) { log(`– ${inst.ticker}: ${ageH.toFixed(1)} órás ár, még friss (napi keret kímélése)`); continue; }
+    await sleep(1500); // ingyenes keret: max. 1 kérés/másodperc
   }
   await step(inst.ticker, async () => {
     const q = await quote(src);
@@ -147,7 +150,7 @@ for (const inst of instruments) {
     let hist = [{ d: q.date, price: q.price }];
     const have = DRY ? [] : await sbGet(`price_history?select=d&user_id=eq.${inst.user_id}&ticker=eq.${encodeURIComponent(inst.ticker)}&limit=40`);
     if (have.length < 30) {
-      try { const h = await history(src, daysAgo(5 * 365)); note(`${inst.ticker}: ${h.length} napos előzmény`); hist = h.concat(hist); }
+      try { if (src.startsWith('alphavantage:')) await sleep(1500); const h = await history(src, daysAgo(5 * 365)); note(`${inst.ticker}: ${h.length} napos előzmény`); hist = h.concat(hist); }
       catch (e) { note(`${inst.ticker}: előzmény nem érhető el (${e.message})`); }
     }
     const uniq = new Map(hist.map(x => [x.d, x]));
