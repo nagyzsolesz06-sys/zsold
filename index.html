@@ -264,10 +264,12 @@ body{font-family:var(--font);letter-spacing:-.005em}
 :root{--primary:#0b5a3b;--on-primary:#fff;--pos:#12804f;--pos-bg:#e3f5ea;--s1:#1f9d63;--s3:#1f9d63}
 .nav button[aria-current="page"]{background:var(--lime);color:#0b2a1c;font-weight:600}
 .tabbar button[aria-current="page"]{color:#0b5a3b}
-.seg button[aria-pressed="true"]{background:#0b5a3b;color:#fff}
+.seg button[aria-pressed="true"]{background:var(--lime,#d9f58c);color:#0b2a1c}
 
 /* lime hangsúlyok */
-:root{--lime:#d9f58c;--lime-strong:#ccef6c}
+:root{--lime:#d9f58c;--lime-strong:#ccef6c;--primary:var(--lime);--on-primary:#0b2a1c}
+.btn:not(.ghost):not(.danger):hover{background:var(--lime-strong);opacity:1}
+img.brand-mark{background:none}
 .hero .pill.pos{background:var(--lime);color:#0b2a1c}
 .hero .pill.neg{background:#ffd9d9;color:#8a1c1c}
 .quick .btn{background:var(--lime);color:#0b2a1c}
