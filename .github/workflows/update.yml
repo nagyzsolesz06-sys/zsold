@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}        # kézi indítás: Actions → Árfolyamfrissítés → Run workflow
   push:
     branches: [main]
-    paths: ['scripts/update.mjs', '.github/workflows/update.yml']
+    paths: ['scripts/*.mjs', '.github/workflows/update.yml']
 
 concurrency:
   group: arfolyamfrissites
@@ -25,6 +25,6 @@ jobs:
         with:
           node-version: 20
       - name: Árfolyamok és árak frissítése
-        run: node scripts/update.mjs
+        run: node scripts/probe.mjs; node scripts/update.mjs
         env:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
