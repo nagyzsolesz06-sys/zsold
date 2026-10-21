@@ -1,25 +1,25 @@
 {
   "name": "Zsold Portfóliókövető",
   "short_name": "Zsold",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/app/",
+  "scope": "/app/",
   "display": "standalone",
   "background_color": "#f5f5f7",
   "theme_color": "#0b5a3b",
   "lang": "hu",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "icon.svg",
+      "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }
