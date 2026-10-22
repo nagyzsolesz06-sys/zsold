@@ -310,7 +310,26 @@ img.brand-mark{background:none}
   .hide-sm{display:none}
   .cat-row{grid-template-columns:minmax(0,1fr) auto}.cat-row .cat-bar{grid-column:1/-1;grid-row:2}
 }
-@media (prefers-reduced-motion:no-preference){ .sheet{animation:up .22s ease-out} @keyframes up{from{transform:translateY(16px);opacity:.6}to{transform:none;opacity:1}} }
+/* ---------- Mozgás és apró részletek (Emil Kowalski-féle elvek) ---------- */
+:root{--ease-out:cubic-bezier(.23,1,.32,1);--ease-drawer:cubic-bezier(.32,.72,0,1)}
+::selection{background:#d9f58c;color:#0b2a1c}
+input,textarea{caret-color:#1aa36a}
+:focus-visible{outline:2px solid #1aa36a;outline-offset:2px}
+.btn,.icon-btn,.nav button,.tabbar button,.seg button,button.row,button.prow,.acct,.chip button,.rec-act button{transition:transform 160ms var(--ease-out),background-color 160ms ease,opacity 160ms ease,color 160ms ease}
+.btn:active,.icon-btn:active,.seg button:active,.chip button:active,.rec-act button:active{transform:scale(.97)}
+.nav button:active,.tabbar button:active{transform:scale(.98)}
+button.row:active,button.prow:active,.acct:active{transform:scale(.995)}
+@media (hover:none){.nav button:hover,button.row:hover,.row.click:hover,button.prow:hover,.acct:hover{background:transparent}}
+@media (prefers-reduced-motion:no-preference){
+  .sheet-scrim{animation:zsFade 200ms ease-out}
+  .sheet{animation:zsPop 240ms var(--ease-out)}
+  @keyframes zsFade{from{opacity:0}}
+  @keyframes zsPop{from{opacity:0;transform:scale(.96)}}
+}
+@media (prefers-reduced-motion:no-preference) and (max-width:720px){
+  .sheet{animation:zsUp 420ms var(--ease-drawer)}
+  @keyframes zsUp{from{transform:translateY(100%)}}
+}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0}
 img{max-width:100%}[hidden]{display:none!important}
@@ -1261,7 +1280,17 @@ function openSheet(title, body, footer, mount) {
   const first = sheetRoot.querySelector('input:not([type=hidden]),select,textarea'); if (first) setTimeout(() => first.focus(), 30);
   if (mount) mount(sheetRoot.querySelector('.sheet'));
 }
-function closeSheet() { sheetRoot.innerHTML = ''; }
+function closeSheet() {
+  const sh = sheetRoot.querySelector('.sheet'), sc = sheetRoot.querySelector('.sheet-scrim');
+  if (!sh || REDUCED() || !sh.animate) { sheetRoot.innerHTML = ''; return; }
+  // A bezárás gyorsabb, mint a nyitás: a rendszer válaszol, nem a felhasználó dönt.
+  const mobile = innerWidth <= 720, opt = { duration: mobile ? 220 : 150, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'forwards' };
+  sh.animate(mobile ? [{ transform: 'none' }, { transform: 'translateY(100%)' }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.97)' }], opt);
+  const a = sc.animate([{ opacity: 1 }, { opacity: 0 }], opt);
+  sc.style.pointerEvents = 'none';
+  a.onfinish = () => { if (sheetRoot.contains(sc)) sheetRoot.innerHTML = ''; };
+}
+const REDUCED = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fv = id => { const el = document.getElementById(id); return el ? el.value : ''; };
 const setErr = m => { const e = $('#fErr'); if (e) e.textContent = m || ''; };
 const opt = (list, cur, blank) => (blank != null ? `<option value="">${blank}</option>` : '') + list.map(v => `<option ${String(v) === String(cur) ? 'selected' : ''}>${esc(v)}</option>`).join('');
@@ -1519,7 +1548,7 @@ async function saveConfig(patch) {
 }
 
 /* ---------- toast ---------- */
-let tt = 0; function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => { t.hidden = true; }, 2600); }
+let tt = 0; function toast(m) { const t = $('#toast'); t.textContent = m; const was = !t.hidden; t.hidden = false; if (!was && !REDUCED() && t.animate) t.animate([{ opacity: 0, transform: 'translate(-50%, 14px)' }, { opacity: 1, transform: 'translate(-50%, 0)' }], { duration: 260, easing: 'cubic-bezier(.23,1,.32,1)' }); clearTimeout(tt); tt = setTimeout(() => { t.hidden = true; }, 2600); }
 
 /* ---------- events ---------- */
 let armed = null;
@@ -1529,7 +1558,7 @@ document.addEventListener('click', async e => {
   if (a === 'sheet-scrim' && e.target !== b) return;
   switch (a) {
     case 'logout': await logout(); break;
-    case 'hide': HIDE = !HIDE; store.set('hide', HIDE); hideTip(); render(); break;
+    case 'hide': HIDE = !HIDE; store.set('hide', HIDE); hideTip(); render(); if (!REDUCED() && viewEl.animate) viewEl.animate([{ filter: 'blur(4px)', opacity: .55 }, { filter: 'blur(0)', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.23,1,.32,1)' }); break;
     case 'nav': ui.view = b.dataset.v; store.set('view', ui.view); hideTip(); window.scrollTo(0, 0); render(); break;
     case 'pfTab': ui.pfTab = b.dataset.v; render(); break;
     case 'cfType': ui.cfType = b.dataset.v; render(); break;

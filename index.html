@@ -28,23 +28,29 @@
   --lime:#d9f58c; --lime-strong:#ccef6c; --on-lime:#0b2a1c;
   --shadow:0 1px 2px rgba(13,15,20,.05),0 12px 32px rgba(13,15,20,.07);
   --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --ease-out:cubic-bezier(.23,1,.32,1); --ease-in-out:cubic-bezier(.77,0,.175,1);
   --wrap:1120px;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 var(--font);-webkit-font-smoothing:antialiased;letter-spacing:-.006em}
-a{color:inherit}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 var(--font);-webkit-font-smoothing:antialiased;letter-spacing:-.006em;font-variant-numeric:tabular-nums}
+::selection{background:var(--lime);color:var(--on-lime)}
+:focus-visible{outline:2px solid var(--green-500);outline-offset:3px;border-radius:6px}
+a{color:inherit;text-underline-offset:3px}
 img{display:block;max-width:100%;height:auto}
 .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px}
-h1,h2,h3{letter-spacing:-.03em;line-height:1.1;margin:0}
-.eyebrow{display:inline-block;font-size:12.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--green-500)}
-.btn{display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 22px;border-radius:999px;font-weight:700;font-size:15.5px;text-decoration:none;transition:transform .15s ease,background-color .15s ease,box-shadow .15s ease;white-space:nowrap}
+h1,h2,h3{letter-spacing:-.032em;line-height:1.08;margin:0;text-wrap:balance}
+p{text-wrap:pretty}
+.btn{display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 22px;border-radius:999px;font-weight:700;font-size:15.5px;text-decoration:none;white-space:nowrap;transition:transform 160ms var(--ease-out),background-color 160ms ease}
 .btn:active{transform:scale(.97)}
-.btn-lime{background:var(--lime);color:var(--on-lime);box-shadow:0 6px 18px rgba(204,239,108,.35)}
-.btn-lime:hover{background:var(--lime-strong)}
+.btn svg{width:18px;height:18px;transition:transform 200ms var(--ease-out)}
+.btn-lime{background:var(--lime);color:var(--on-lime);box-shadow:0 6px 18px rgba(130,170,40,.28)}
 .btn-ghost{color:#fff;border:1.5px solid rgba(255,255,255,.35)}
-.btn-ghost:hover{background:rgba(255,255,255,.1)}
-.btn svg{width:18px;height:18px}
+@media (hover:hover) and (pointer:fine){
+  .btn-lime:hover{background:var(--lime-strong)}
+  .btn-lime:hover svg{transform:translateX(3px)}
+  .btn-ghost:hover{background:rgba(255,255,255,.1)}
+}
 
 /* ---------- top ---------- */
 .top{position:absolute;inset:0 0 auto;z-index:5}
@@ -52,128 +58,140 @@ h1,h2,h3{letter-spacing:-.03em;line-height:1.1;margin:0}
 .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;color:#fff;text-decoration:none}
 .logo img{width:32px;height:32px;border-radius:9px;box-shadow:0 0 0 1px rgba(255,255,255,.18)}
 .top nav{display:flex;gap:26px;align-items:center}
-.top nav a{color:rgba(255,255,255,.82);text-decoration:none;font-size:14.5px;font-weight:500}
+.top nav a{color:rgba(255,255,255,.8);text-decoration:none;font-size:14.5px;font-weight:500;transition:color 160ms ease}
 .top nav a:hover{color:#fff}
-.top nav a.btn{color:var(--on-lime)}
-.top nav .btn{height:38px;padding:0 16px;font-size:14px}
+.top nav a.btn{color:var(--on-lime);height:38px;padding:0 16px;font-size:14px}
 
 /* ---------- hero ---------- */
-.hero{position:relative;overflow:hidden;color:#fff;background:linear-gradient(115deg,var(--green-900) 0%,var(--green-700) 35%,var(--green-500) 62%,var(--mint) 82%,#0d6b45 100%);padding:150px 0 0}
+.hero{position:relative;overflow:hidden;color:#fff;background:linear-gradient(115deg,var(--green-900) 0%,var(--green-700) 35%,var(--green-500) 62%,var(--mint) 82%,#0d6b45 100%);padding:156px 0 0}
 .hero::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.10) 0px,rgba(255,255,255,0) 7px,rgba(0,0,0,.18) 14px,rgba(255,255,255,.06) 22px);mix-blend-mode:overlay;pointer-events:none}
 .hero::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 70% at 78% 30%,rgba(160,255,210,.3),transparent 70%),linear-gradient(180deg,transparent 70%,rgba(6,42,29,.35));pointer-events:none}
 .hero .wrap{position:relative;z-index:1}
-.hero .eyebrow{color:var(--lime)}
-.hero h1{font-size:clamp(40px,6.4vw,72px);font-weight:800;max-width:12.5em;margin:14px 0 20px}
-.hero h1 em{font-style:normal;color:var(--lime)}
-.hero p.lead{font-size:clamp(17px,2vw,20px);color:rgba(255,255,255,.86);max-width:36em;margin:0 0 32px}
-.cta{display:flex;gap:12px;flex-wrap:wrap}
-.shots{position:relative;margin-top:64px;padding-bottom:0}
-.shot-desk{border-radius:18px 18px 0 0;overflow:hidden;box-shadow:0 -2px 0 rgba(255,255,255,.18),0 30px 80px rgba(0,0,0,.35);background:#fff;max-width:980px}
+.hero h1{font-size:clamp(42px,6.6vw,76px);font-weight:800;max-width:11.5em;margin:0 0 22px}
+.hero h1 span{color:var(--lime)}
+.hero p.lead{font-size:clamp(17px,2vw,20px);line-height:1.55;color:rgba(255,255,255,.88);max-width:34em;margin:0 0 32px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.byline{margin-top:22px;font-size:14px;color:rgba(255,255,255,.7)}
+.byline b{color:#fff;font-weight:600}
+.shots{position:relative;margin-top:60px}
+.shot-desk{border-radius:18px 18px 0 0;overflow:hidden;box-shadow:0 -1px 0 rgba(255,255,255,.25),0 30px 80px rgba(0,0,0,.35);background:#fff;max-width:980px}
 .shot-desk .bar{height:30px;background:#eceef1;display:flex;align-items:center;gap:7px;padding:0 14px}
 .shot-desk .bar i{width:10px;height:10px;border-radius:50%;background:#cfd3da}
 .shot-desk .bar span{margin-left:12px;font-size:12px;color:#7a808c;background:#fff;border-radius:6px;padding:2px 10px}
 .shot-phone{position:absolute;right:0;bottom:-60px;width:250px;border-radius:34px;overflow:hidden;border:8px solid #0d0f14;box-shadow:0 30px 70px rgba(0,0,0,.4);background:#0d0f14}
 .shot-phone img{border-radius:26px}
 
-/* ---------- strip ---------- */
-.strip{background:var(--surface);border-bottom:1px solid var(--line)}
-.strip .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;padding-top:56px;padding-bottom:40px}
-.stat b{display:block;font-size:30px;font-weight:800;letter-spacing:-.03em}
-.stat span{color:var(--fg-2);font-size:14.5px}
+/* A hero egyetlen, kidolgozott mozdulata: a képernyőképek alulról "kinyílnak". */
+@media (prefers-reduced-motion:no-preference){
+  .js .hero h1,.js .hero .lead,.js .hero .cta,.js .hero .byline{opacity:0;transform:translateY(12px);filter:blur(4px);transition:opacity 700ms var(--ease-out),transform 700ms var(--ease-out),filter 700ms var(--ease-out)}
+  .js .hero .lead{transition-delay:80ms}.js .hero .cta{transition-delay:160ms}.js .hero .byline{transition-delay:220ms}
+  .js .shot-desk{clip-path:inset(18% 6% 0 6% round 18px 18px 0 0);transform:translateY(40px);transition:clip-path 1100ms var(--ease-in-out) 250ms,transform 1100ms var(--ease-out) 250ms}
+  .js .shot-phone{opacity:0;transform:translateY(60px) rotate(2deg);transition:opacity 700ms var(--ease-out) 700ms,transform 900ms var(--ease-out) 700ms}
+  .ready .hero h1,.ready .hero .lead,.ready .hero .cta,.ready .hero .byline{opacity:1;transform:none;filter:none}
+  .ready .shot-desk{clip-path:inset(0 0 0 0 round 18px 18px 0 0);transform:none}
+  .ready .shot-phone{opacity:1;transform:none}
+}
 
-/* ---------- sections ---------- */
-section{padding:96px 0}
-.sec-head{max-width:640px;margin-bottom:44px}
-.sec-head h2{font-size:clamp(30px,4vw,44px);font-weight:800;margin:10px 0 14px}
-.sec-head p{color:var(--fg-2);font-size:17.5px;margin:0}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.card{background:var(--surface);border-radius:22px;padding:26px;box-shadow:var(--shadow)}
-.card .ic{width:44px;height:44px;border-radius:13px;background:var(--lime);color:var(--on-lime);display:grid;place-items:center;margin-bottom:18px}
-.card .ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.card h3{font-size:19px;font-weight:700;margin-bottom:8px}
-.card p{color:var(--fg-2);margin:0;font-size:15.5px}
-.card.wide{grid-column:span 2}
-.parse{margin-top:18px;display:grid;gap:8px}
-.parse .in{font:500 14.5px var(--font);background:var(--surface-2);border-radius:12px;padding:11px 14px;color:var(--fg)}
-.parse .in::before{content:"“";color:var(--fg-3)}.parse .in::after{content:"”";color:var(--fg-3)}
-.parse .arrow{color:var(--fg-3);font-size:13px;padding-left:4px}
-.parse .out{display:flex;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14px}
-.parse .out span{color:var(--fg-2)}
-.parse .out b{white-space:nowrap}
+/* ---------- features ---------- */
+section{padding:112px 0}
+.intro{max-width:620px;margin-bottom:72px}
+.intro h2,.how h2,.story h2{font-size:clamp(32px,4.2vw,48px);font-weight:800;margin:0 0 16px}
+.intro p{color:var(--fg-2);font-size:18px;margin:0}
+.feat{display:grid;grid-template-columns:5fr 7fr;gap:64px;align-items:center;margin-bottom:104px}
+.feat:last-of-type{margin-bottom:0}
+.feat.flip{grid-template-columns:7fr 5fr}
+.feat.flip .copy{order:2}
+.feat h3{font-size:clamp(24px,2.6vw,30px);font-weight:800;margin:0 0 14px}
+.feat .copy p{color:var(--fg-2);font-size:16.5px;margin:0 0 14px}
+.feat .copy ul{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:10px;font-size:15px}
+.feat .copy li{display:flex;gap:10px;align-items:baseline}
+.feat .copy li::before{content:"";flex:none;width:7px;height:7px;border-radius:2px;background:var(--green-500);transform:translateY(-2px)}
+.frame{border-radius:20px;background:#f3f4f7;padding:10px;box-shadow:0 1px 2px rgba(13,15,20,.05),0 24px 60px rgba(13,15,20,.10)}
+.frame img{border-radius:14px}
+.feat>*{min-width:0}
+.trans{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:20px;font-size:14.5px;color:var(--fg-2)}
+.trans code{font:500 14px var(--font);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:3px 8px;color:var(--fg)}
+.extras{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:104px;border-top:1px solid var(--line)}
+.extras div{padding:26px 26px 0 0}
+.extras div+div{padding-left:26px;border-left:1px solid var(--line)}
+.extras b{display:block;font-size:16px;margin-bottom:6px}
+.extras span{color:var(--fg-2);font-size:14.5px;line-height:1.55;display:block}
 
 /* ---------- how it works ---------- */
 .how{background:var(--green-900);color:#fff;position:relative;overflow:hidden}
 .how::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0px,rgba(255,255,255,0) 7px,rgba(0,0,0,.12) 14px);pointer-events:none}
 .how .wrap{position:relative}
-.how .sec-head p{color:rgba(255,255,255,.72)}
-.how .eyebrow{color:var(--lime)}
-.flow{display:grid;grid-template-columns:1.1fr auto 1fr auto 1fr auto 1fr;align-items:stretch;gap:0}
+.how .intro p{color:rgba(255,255,255,.74)}
+.flow{display:grid;grid-template-columns:1.1fr auto 1fr auto 1fr auto 1fr;align-items:stretch}
 .node{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:20px}
-.node small{display:block;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mint);margin-bottom:8px}
+.node small{display:block;font-size:13px;font-weight:600;color:var(--mint);margin-bottom:6px}
 .node b{display:block;font-size:17px;margin-bottom:8px}
-.node ul{margin:0;padding:0;list-style:none;color:rgba(255,255,255,.72);font-size:14px;display:grid;gap:4px}
+.node ul{margin:0;padding:0;list-style:none;color:rgba(255,255,255,.74);font-size:14px;display:grid;gap:4px}
 .node.app{background:var(--lime);color:var(--on-lime);border-color:transparent}
 .node.app small{color:#1f6b45}.node.app ul{color:#25412f}
 .link{display:grid;place-items:center;width:44px;color:var(--mint)}
 .link svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tech{display:flex;flex-wrap:wrap;gap:8px;margin-top:36px}
-.tech span{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 13px;font-size:13.5px;color:rgba(255,255,255,.85)}
+.tech span{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 13px;font-size:13.5px;color:rgba(255,255,255,.86)}
 
 /* ---------- story / roadmap ---------- */
-.two{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
 .story p{color:var(--fg-2);font-size:17px;margin:0 0 16px}
-.road{display:grid;gap:12px}
-.road .item{display:flex;gap:16px;background:var(--surface);border-radius:18px;padding:18px 20px;box-shadow:var(--shadow)}
-.road .tag{flex:none;align-self:flex-start;font-size:12px;font-weight:700;border-radius:999px;padding:4px 10px;background:var(--surface-2);color:var(--fg-2)}
-.road .tag.on{background:var(--lime);color:var(--on-lime)}
-.road b{display:block;margin-bottom:2px}
+.sig{margin-top:26px;padding-top:20px;border-top:1px solid var(--line);font-size:15px;color:var(--fg-2)}
+.sig b{display:block;color:var(--fg);font-size:16px}
+.road h3{font-size:20px;font-weight:800;margin:6px 0 18px}
+.road ol{list-style:none;margin:0;padding:0;position:relative}
+.road ol::before{content:"";position:absolute;left:7px;top:10px;bottom:10px;width:2px;background:var(--line)}
+.road li{position:relative;padding:0 0 26px 34px}
+.road li::before{content:"";position:absolute;left:0;top:6px;width:16px;height:16px;border-radius:50%;background:var(--surface);border:2px solid var(--line)}
+.road li.on::before{background:var(--lime);border-color:var(--green-500)}
+.road li em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--fg-3)}
+.road li.on em{color:var(--green-500)}
+.road b{display:block;font-size:16.5px;margin:2px 0 3px}
 .road span{color:var(--fg-2);font-size:14.5px}
 
 /* ---------- final ---------- */
-.final{padding:0 0 96px}
+.final{padding:0 0 104px}
 .final .box{position:relative;overflow:hidden;border-radius:28px;color:#fff;padding:56px;background:linear-gradient(115deg,var(--green-900) 0%,var(--green-700) 40%,var(--green-500) 75%,var(--mint) 100%);display:flex;align-items:center;justify-content:space-between;gap:28px;flex-wrap:wrap}
 .final .box::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.10) 0px,rgba(255,255,255,0) 7px,rgba(0,0,0,.18) 14px,rgba(255,255,255,.06) 22px);mix-blend-mode:overlay;pointer-events:none}
 .final .box>*{position:relative}
 .final h2{font-size:clamp(28px,3.6vw,40px);font-weight:800;max-width:14em}
-.final p{margin:10px 0 0;color:rgba(255,255,255,.82)}
+.final p{margin:10px 0 0;color:rgba(255,255,255,.84)}
 footer{border-top:1px solid var(--line);padding:28px 0 40px;color:var(--fg-3);font-size:14px}
 footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 footer a{color:var(--fg-2);text-decoration:none}
 footer a:hover{color:var(--fg)}
 
-/* ---------- reveal ---------- */
-@media (prefers-reduced-motion:no-preference){
-  .rv{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
-  .rv.in{opacity:1;transform:none}
-  .hero .rv{transition-duration:.9s}
-}
-
 /* ---------- responsive ---------- */
 @media (max-width:960px){
-  .grid{grid-template-columns:1fr 1fr}.card.wide{grid-column:span 2}
-  .flow{grid-template-columns:1fr;gap:0}.link{width:auto;height:40px}.link svg{transform:rotate(90deg)}
-  .two{grid-template-columns:1fr;gap:40px}
+  .feat,.feat.flip{grid-template-columns:1fr;gap:32px;margin-bottom:80px}
+  .feat.flip .copy{order:0}
+  .extras{grid-template-columns:1fr 1fr}
+  .extras div:nth-child(3){padding-left:0;border-left:0}
+  .flow{grid-template-columns:1fr}.link{width:auto;height:40px}.link svg{transform:rotate(90deg)}
+  .two{grid-template-columns:1fr;gap:48px}
   .shot-phone{width:200px;right:-10px}
 }
 @media (max-width:680px){
   .wrap{padding:0 16px}
   .top nav a:not(.btn){display:none}
   .hero{padding-top:112px}
-  .strip .wrap{grid-template-columns:1fr 1fr;padding-top:40px}
-  .grid{grid-template-columns:1fr}.card.wide{grid-column:auto}
-  section{padding:72px 0}
   .shots{margin-top:44px}
   .shot-desk{display:none}
   .shot-phone{position:relative;right:auto;bottom:auto;margin:0 auto;width:260px;border-bottom:0;border-radius:34px 34px 0 0}
   .shot-phone img{border-radius:26px 26px 0 0;max-height:430px;object-fit:cover;object-position:top}
-  .stat b{font-size:24px}
-  .parse .out{flex-direction:column-reverse;gap:2px}
+  section{padding:80px 0}
+  .intro{margin-bottom:48px}
+  .frame{padding:6px;border-radius:16px}.frame img{border-radius:11px}
+  .extras{grid-template-columns:1fr;margin-top:72px}
+  .extras div,.extras div+div{padding:20px 0;border-left:0;border-bottom:1px solid var(--line)}
   .final .box{padding:36px 26px}
   .btn{height:46px}
 }
 </style>
 </head>
 <body>
+<script>document.documentElement.classList.add('js')</script>
 
 <header class="top">
   <div class="wrap">
@@ -189,81 +207,75 @@ footer a:hover{color:var(--fg)}
 
 <div class="hero">
   <div class="wrap">
-    <span class="eyebrow rv">Personal project · 2026</span>
-    <h1 class="rv">All my money in one place, <em>always up to date.</em></h1>
-    <p class="lead rv">Zsold is a personal finance and portfolio tracker I designed and built. It brings bank accounts, cash, ETFs and crypto into one dashboard, updates prices and MNB exchange rates on its own, and calculates every return in forints.</p>
-    <div class="cta rv">
+    <h1>All my money in one place, <span>always up to date.</span></h1>
+    <p class="lead">Zsold is a personal finance and portfolio tracker I designed and built. It brings bank accounts, cash, ETFs and crypto into one dashboard, updates prices and MNB exchange rates on its own, and calculates every return in forints.</p>
+    <div class="cta">
       <a class="btn btn-lime" href="/demo/">Try the live demo
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       <a class="btn btn-ghost" href="#how">How it works</a>
     </div>
-    <div class="shots rv">
+    <p class="byline">A personal project by <b>Zsolt Nagy</b>, 2026. The interface is in Hungarian.</p>
+    <div class="shots">
       <div class="shot-desk"><div class="bar"><i></i><i></i><i></i><span>zsold.app</span></div><img src="/assets/app-overview.jpg" alt="Zsold overview screen with net worth, monthly cash flow and recurring items" width="2040" height="1290"></div>
       <div class="shot-phone"><img src="/assets/app-mobile.jpg" alt="Zsold on a phone" width="780" height="1688" loading="lazy"></div>
     </div>
   </div>
 </div>
 
-<div class="strip">
-  <div class="wrap">
-    <div class="stat rv"><b>Hourly</b><span>automatic price and FX updates</span></div>
-    <div class="stat rv"><b>3 sources</b><span>MNB, Alpha Vantage, CoinGecko</span></div>
-    <div class="stat rv"><b>4 currencies</b><span>HUF, EUR, USD and CHF accounts</span></div>
-    <div class="stat rv"><b>0 Ft</b><span>monthly running cost, on free tiers</span></div>
-  </div>
-</div>
-
 <section id="features">
   <div class="wrap">
-    <div class="sec-head rv">
-      <span class="eyebrow">Features</span>
+    <div class="intro">
       <h2>Everything my Excel tracker did, without the manual work.</h2>
       <p>Zsold started as an Excel workbook with Power Query. The web version keeps its logic and adds what a spreadsheet cannot do well.</p>
     </div>
-    <div class="grid">
-      <div class="card rv">
-        <div class="ic"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></div>
-        <h3>Live market data</h3>
-        <p>A scheduled job fetches ETF and bitcoin prices and the official MNB exchange rates every hour, and keeps the full price history.</p>
+
+    <div class="feat">
+      <div class="copy">
+        <h3>Returns in forints, calculated properly.</h3>
+        <p>Every trade is converted at the MNB rate of its own date, cost basis follows FIFO, and the currency effect is shown separately from how the asset itself performed.</p>
+        <ul>
+          <li>ETF and bitcoin prices refresh every hour</li>
+          <li>Full price history for every holding</li>
+          <li>Each asset keeps its own colour across the app</li>
+        </ul>
       </div>
-      <div class="card rv">
-        <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M8 15l3-4 3 2 5-6"/></svg></div>
-        <h3>Returns in forints, done right</h3>
-        <p>Cost basis uses FIFO, every trade is converted at the MNB rate of its own date, and the currency effect is shown separately from the asset return.</p>
+      <div class="frame"><img src="/assets/feat-portfolio.jpg" alt="Portfolio view with current value, remaining cost, gain and a table of holdings" width="1896" height="926" loading="lazy"></div>
+    </div>
+
+    <div class="feat flip">
+      <div class="copy">
+        <h3>Spending logged the way you would say it.</h3>
+        <p>Type one sentence in Hungarian. A rule-based parser picks out the dates, amounts, accounts and categories, learns from earlier entries, and lets you check everything before it is saved.</p>
+        <div class="trans"><code>tegnap</code> yesterday <code>kártyával</code> by card <code>kávé</code> coffee</div>
       </div>
-      <div class="card rv">
-        <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h4"/></svg></div>
-        <h3>Accounts that reconcile</h3>
-        <p>Balances are rebuilt from every income, expense, transfer and trade, so they can be checked against the bank down to the forint.</p>
+      <div class="frame"><img src="/assets/feat-entry.jpg" alt="Smart entry turning one sentence into two expense items for review" width="1896" height="656" loading="lazy"></div>
+    </div>
+
+    <div class="feat">
+      <div class="copy">
+        <h3>Every forint accounted for.</h3>
+        <p>Account balances are rebuilt from every income, expense, transfer and trade, across forint, euro, dollar and franc accounts, so they can be checked against the bank down to the last forint.</p>
+        <p>The monthly view shows where the money came from and where it went.</p>
       </div>
-      <div class="card wide rv">
-        <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></div>
-        <h3>Smart expense entry in plain Hungarian</h3>
-        <p>Type a sentence the way you would say it. A rule-based parser picks out dates, amounts, accounts and categories, and learns from earlier entries.</p>
-        <div class="parse">
-          <div class="in">tegnap kínai kaja 2500 kártyával, kávé 650</div>
-          <div class="arrow">becomes two entries</div>
-          <div class="out"><span>Yesterday · Restaurant, coffee · Card</span><b>Chinese food · 2 500 Ft</b></div>
-          <div class="out"><span>Yesterday · Restaurant, coffee · Card</span><b>Coffee · 650 Ft</b></div>
-        </div>
-      </div>
-      <div class="card rv">
-        <div class="ic"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
-        <h3>Privacy mode and recurring items</h3>
-        <p>One tap hides every amount while percentages stay visible. Fixed items such as a scholarship are suggested when they are due.</p>
-      </div>
+      <div class="frame"><img src="/assets/feat-flow.jpg" alt="Monthly cash flow chart with income and expenses by month" width="1896" height="1028" loading="lazy"></div>
+    </div>
+
+    <div class="extras">
+      <div><b>Privacy mode</b><span>One tap hides every amount; percentages and market prices stay visible.</span></div>
+      <div><b>Recurring items</b><span>Fixed income or bills are suggested when they fall due.</span></div>
+      <div><b>Works on any screen</b><span>A sidebar on desktop, a tab bar on the phone, installable as an app.</span></div>
+      <div><b>Hungarian tax rates</b><span>Dividend and social contribution rates kept by year.</span></div>
     </div>
   </div>
 </section>
 
 <section class="how" id="how">
   <div class="wrap">
-    <div class="sec-head rv">
-      <span class="eyebrow">How it works</span>
+    <div class="intro">
       <h2>A small data pipeline behind a simple screen.</h2>
       <p>No servers to maintain. A scheduled job collects the data, a hosted Postgres database stores it with row-level security, and a lightweight web app reads it.</p>
     </div>
-    <div class="flow rv">
+    <div class="flow">
       <div class="node"><small>Sources</small><b>Market data</b><ul><li>MNB exchange rates (SOAP)</li><li>Alpha Vantage, Xetra ETFs</li><li>CoinGecko, bitcoin</li></ul></div>
       <div class="link"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
       <div class="node"><small>Every hour</small><b>GitHub Actions</b><ul><li>Node.js update script</li><li>Respects API rate limits</li><li>Backfills price history</li></ul></div>
@@ -272,7 +284,7 @@ footer a:hover{color:var(--fg)}
       <div class="link"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
       <div class="node app"><small>Front end</small><b>zsold.app</b><ul><li>Plain HTML, CSS, JavaScript</li><li>Works on desktop and phone</li><li>GitHub Pages, custom domain</li></ul></div>
     </div>
-    <div class="tech rv">
+    <div class="tech">
       <span>JavaScript</span><span>PostgreSQL</span><span>Supabase</span><span>GitHub Actions</span><span>GitHub Pages</span><span>Cloudflare DNS</span><span>REST and SOAP APIs</span><span>Built with AI coding tools</span>
     </div>
   </div>
@@ -280,28 +292,27 @@ footer a:hover{color:var(--fg)}
 
 <section id="story">
   <div class="wrap two">
-    <div class="story rv">
-      <span class="eyebrow">Why I built it</span>
-      <div class="sec-head" style="margin:10px 0 22px"><h2>From a spreadsheet to a product I use every day.</h2></div>
+    <div class="story">
+      <h2>From a spreadsheet to a product I use every day.</h2>
       <p>I track my ETF portfolio and my spending closely, and for a while an Excel workbook did the job. It pulled MNB rates with Power Query and calculated my returns, but logging every coffee on a laptop was tedious, and I could not check anything from my phone.</p>
       <p>So I turned it into a web app. I defined what it should do, designed the screens and checked every number against the original workbook, and I built it with AI coding tools. It now runs on its own domain and updates itself every hour.</p>
-      <p style="margin:0"><b style="color:var(--fg)">Zsolt Nagy</b><br>Business Administration and Management student, Corvinus University of Budapest</p>
+      <div class="sig"><b>Zsolt Nagy</b>Business Administration and Management student, Corvinus University of Budapest</div>
     </div>
-    <div class="rv">
-      <span class="eyebrow">What comes next</span>
-      <div class="road" style="margin-top:18px">
-        <div class="item"><span class="tag on">Live</span><div><b>Portfolio, accounts and spending</b><span>Automatic prices, FIFO returns, smart entry, privacy mode.</span></div></div>
-        <div class="item"><span class="tag">Next</span><div><b>Analysis tab</b><span>A watchlist with company fundamentals from SEC EDGAR, valuation ratios and automatic red-flag checks.</span></div></div>
-        <div class="item"><span class="tag">Next</span><div><b>DCF valuation page</b><span>An interactive discounted cash flow model with sensitivity tables, starting with Richter Gedeon.</span></div></div>
-        <div class="item"><span class="tag">Later</span><div><b>Macro view and AI analyst</b><span>Interest rates and inflation for Hungary, the euro area and the US, plus an assistant that explains the numbers.</span></div></div>
-      </div>
+    <div class="road">
+      <h3>What comes next</h3>
+      <ol>
+        <li class="on"><em>Live</em><b>Portfolio, accounts and spending</b><span>Automatic prices, FIFO returns, smart entry, privacy mode.</span></li>
+        <li><em>Next</em><b>Analysis tab</b><span>A watchlist with company fundamentals from SEC EDGAR, valuation ratios and automatic red-flag checks.</span></li>
+        <li><em>Next</em><b>DCF valuation page</b><span>An interactive discounted cash flow model with sensitivity tables, starting with Richter Gedeon.</span></li>
+        <li><em>Later</em><b>Macro view and AI analyst</b><span>Interest rates and inflation for Hungary, the euro area and the US, plus an assistant that explains the numbers.</span></li>
+      </ol>
     </div>
   </div>
 </section>
 
 <div class="final">
   <div class="wrap">
-    <div class="box rv">
+    <div class="box">
       <div><h2>See it with sample data.</h2><p>The demo runs entirely in your browser. Nothing you change is saved.</p></div>
       <a class="btn btn-lime" href="/demo/">Open the live demo
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
@@ -317,12 +328,13 @@ footer a:hover{color:var(--fg)}
 </footer>
 
 <script>
-  // Finom megjelenés görgetéskor; ha nincs IntersectionObserver, minden azonnal látszik.
+  // A hero megjelenése: a betűtípus és az első kép betöltése után indul, legkésőbb 600 ms múlva.
   (function () {
-    var els = document.querySelectorAll('.rv');
-    if (!('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('in'); }); return; }
-    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }); }, { rootMargin: '0px 0px -8% 0px' });
-    els.forEach(function (e, i) { e.style.transitionDelay = (e.closest('.hero') ? i * 90 : 0) + 'ms'; io.observe(e); });
+    var go = function () { document.documentElement.classList.add('ready'); };
+    var img = document.querySelector('.shot-desk img');
+    var t = setTimeout(go, 600);
+    Promise.all([document.fonts ? document.fonts.ready : null, img && !img.complete ? new Promise(function (r) { img.onload = img.onerror = r; }) : null])
+      .then(function () { clearTimeout(t); requestAnimationFrame(function () { requestAnimationFrame(go); }); });
   })();
 </script>
 </body>
