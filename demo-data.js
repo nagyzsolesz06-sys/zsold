@@ -2,6 +2,8 @@
    Semmi nem megy a valódi adatbázisba; újratöltéskor minden visszaáll.
    Az adatok a mai naphoz igazodnak, így a demó mindig "friss". */
 (function () {
+  // Csak a ?demo címen fut; a saját appban azonnal kilép, és nem nyúl semmihez.
+  if (!/(^|&)demo(=|&|$)/.test(location.search.slice(1))) return;
   window.ZSOLD_DEMO = true;
 
   // Determinisztikus véletlen, hogy a demó minden betöltéskor ugyanúgy nézzen ki.

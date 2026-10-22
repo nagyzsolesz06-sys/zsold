@@ -346,10 +346,9 @@ img{max-width:100%}[hidden]{display:none!important}
 <div id="tip" hidden></div>
 <div id="toast" hidden></div>
 
-<script>window.ZSOLD_DEMO_REQ = /(^|&)demo(=|&|$)/.test(location.search.slice(1));</script>
-<script>document.write(window.ZSOLD_DEMO_REQ
-  ? '<script src="/demo-data.js"><\/script>'
-  : '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script><script src="/config.js"><\/script>');</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/config.js"></script>
+<script src="/demo-data.js"></script>
 <script>
 (() => {
 'use strict';
@@ -592,7 +591,8 @@ async function remove(coll, id) {
 function errText(e) {
   if (e && e.code === '23505') return 'Már van ilyen nevű tétel.';
   if (e && /JWT|auth/i.test(e.message || '')) return 'Lejárt a bejelentkezés. Jelentkezz be újra.';
-  return 'A mentés nem sikerült. Ellenőrizd az internetkapcsolatot, és próbáld újra.';
+  const det = e && (e.message || e.code) ? ` (${String(e.code || '')} ${String(e.message || '').slice(0, 90)})`.replace('( ', '(') : '';
+  return 'A mentés nem sikerült' + det + '. Ellenőrizd az internetkapcsolatot, és próbáld újra.';
 }
 const strip = o => { const { id, ...rest } = o; return rest; };
 let sample = null;   // okos költségbeíró: a következő lépésben, szerveroldali függvényen keresztül
