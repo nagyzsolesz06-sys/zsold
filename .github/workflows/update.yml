@@ -3,7 +3,16 @@ name: Árfolyamfrissítés
 on:
   schedule:
     - cron: '17 5-20 * * *'   # óránként 7:17 és 22:17 között (budapesti nyári idő szerint), minden nap
-  workflow_dispatch: {}        # kézi indítás: Actions → Árfolyamfrissítés → Run workflow
+  workflow_dispatch:           # kézi indítás: Actions → Árfolyamfrissítés → Run workflow
+    inputs:
+      mod:
+        description: 'Mit futtasson'
+        type: choice
+        default: frissítés
+        options:
+          - frissítés              # a szokásos óránkénti futás
+          - visszatöltés próba     # régi árak lekérése a grafikonhoz, adatbázis-írás nélkül
+          - visszatöltés           # régi árak beírása a price_history táblába
   push:
     branches: [main]
     paths: ['scripts/*.mjs', '.github/workflows/update.yml']
@@ -26,10 +35,18 @@ jobs:
         with:
           node-version: 20
       - name: Árfolyamok és árak frissítése
+        if: ${{ !startsWith(inputs.mod, 'visszatöltés') }}
         run: node scripts/update.mjs
         env:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           ALPHAVANTAGE_KEY: ${{ secrets.ALPHAVANTAGE_KEY }}
+      - name: Régi árak visszatöltése a portfólióérték-grafikonhoz
+        if: ${{ startsWith(inputs.mod, 'visszatöltés') }}
+        run: node scripts/backfill.mjs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          ALPHAVANTAGE_KEY: ${{ secrets.ALPHAVANTAGE_KEY }}
+          DRY_RUN: ${{ inputs.mod == 'visszatöltés próba' }}
       - name: Időzítés életben tartása (a GitHub 60 nap tétlenség után leállítaná)
         if: always()
         run: |
