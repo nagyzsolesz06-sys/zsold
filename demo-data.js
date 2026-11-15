@@ -124,7 +124,13 @@
     },
   }];
 
-  const D = { accounts, trades, cash, instruments, price_history, fx_rates, settings };
+  // Két kitalált cél az Áttekintés célkártyájához
+  const goals = [
+    { id: uid(), name: 'Vésztartalék', target: 1000000, deadline: (now.getFullYear() + 1) + '-12-31', portfolio: false, accounts: ['Főszámla', 'Készpénz'], sort: 0 },
+    { id: uid(), name: 'Portfólió 1 millió', target: 1000000, deadline: null, portfolio: true, accounts: [], sort: 1 },
+  ];
+
+  const D = { accounts, trades, cash, instruments, price_history, fx_rates, settings, goals };
 
   /* ---------- a supabase-js azon része, amit az app használ ---------- */
   const query = t => {

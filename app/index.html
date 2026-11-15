@@ -332,6 +332,25 @@ button.pv-chip[aria-pressed="false"]{opacity:.55;background:var(--bg)}
   .pv-seg{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));width:100%}
   .pv-seg button{padding:0;height:44px;font-size:13px}
 }
+/* ---------- Célok és befektetési széria ---------- */
+.goal{display:block;width:100%;text-align:left;padding:10px;margin:0 -10px;border-radius:var(--r-md);box-sizing:content-box}
+.goal:hover{background:var(--surface-2)}
+.goal-top{display:flex;justify-content:space-between;gap:12px;font-size:14.5px}
+.goal-top span{color:var(--fg-2);font-variant-numeric:tabular-nums}
+.goal-bar{height:10px;background:var(--surface-2);border-radius:999px;margin:8px 0 6px;overflow:hidden}
+.goal:hover .goal-bar{background:var(--line)}
+.goal-bar i{display:block;height:100%;border-radius:999px;background:var(--s1)}
+.goal-sub{display:flex;justify-content:space-between;gap:4px 12px;flex-wrap:wrap;font-size:13px;color:var(--fg-2);font-variant-numeric:tabular-nums}
+.streak{background:#062a1d;color:#fff;border-radius:24px;padding:24px;min-width:0;display:flex;flex-direction:column}
+.streak-n{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1.1;margin:6px 0 2px}
+.streak-n small{font-size:18px;font-weight:600;letter-spacing:0;margin-left:6px}
+.streak-strip{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;margin-top:18px}
+.streak-strip i{height:22px;border-radius:6px;background:rgba(255,255,255,.12)}
+.streak-strip i.buy{background:#7fe8b8}.streak-strip i.run{background:var(--lime,#d9f58c)}
+.streak-ax{display:flex;justify-content:space-between;font-size:11.5px;color:rgba(255,255,255,.7);margin-top:6px}
+.checks{display:flex;flex-wrap:wrap;gap:8px}
+.check{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px 0 12px;border-radius:999px;background:var(--surface);font-size:14px;font-weight:600;color:var(--fg);cursor:pointer}
+.field .check input{width:18px;height:18px;padding:0;accent-color:#0b5a3b}
 /* ---------- Mozgás és apró részletek (Emil Kowalski-féle elvek) ---------- */
 :root{--ease-out:cubic-bezier(.23,1,.32,1);--ease-drawer:cubic-bezier(.32,.72,0,1)}
 ::selection{background:#d9f58c;color:#0b2a1c}
@@ -452,7 +471,7 @@ const VIEWS = [
 ];
 
 /* ---------- state ---------- */
-const S = { trades: [], cash: [], accounts: [], inst: [], fx: [], ph: {}, rev: 0, config: null, loaded: {}, mode: 'loading' };
+const S = { trades: [], cash: [], accounts: [], inst: [], fx: [], ph: {}, rev: 0, goals: [], goalsOk: true, config: null, loaded: {}, mode: 'loading' };
 const DEMO = !!window.ZSOLD_DEMO, SP = DEMO ? 'zsdemo.' : 'nzterv.';
 const store = { get(k, d) { try { const v = localStorage.getItem(SP + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem(SP + k, JSON.stringify(v)); } catch {} } };
 const hashView = (location.hash || '').slice(1);
@@ -642,7 +661,7 @@ function pvSlice(ser, key) {
 
 /* ---------- persistence (Supabase) ---------- */
 const sb = window.supabase.createClient(ZSOLD_CONFIG.url, ZSOLD_CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true } });
-const TABLE = { trades: 'trades', cash: 'cash', accounts: 'accounts', instruments: 'instruments' };
+const TABLE = { trades: 'trades', cash: 'cash', accounts: 'accounts', instruments: 'instruments', goals: 'goals' };
 const isUuid = s => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s));
 async function fetchAll(table, order) {
   const out = []; let from = 0;
@@ -656,9 +675,12 @@ async function fetchAll(table, order) {
 const ts = s => s ? Date.parse(s) || 0 : 0;
 async function loadAll() {
   try {
-    const [acc, tr, ca, ins, ph, fx, st] = await Promise.all([
+    const [acc, tr, ca, ins, ph, fx, st, gl] = await Promise.all([
       fetchAll('accounts'), fetchAll('trades'), fetchAll('cash'), fetchAll('instruments'),
-      fetchAll('price_history', 'd'), fetchAll('fx_rates', 'd'), fetchAll('settings')]);
+      fetchAll('price_history', 'd'), fetchAll('fx_rates', 'd'), fetchAll('settings'),
+      fetchAll('goals').catch(() => null)]); // a célok táblája hiányozhat, amíg a séma frissítése nem futott le: ettől még minden más működik
+    S.goalsOk = !!gl;
+    S.goals = (gl || []).map(g => ({ id: g.id, name: g.name, target: num(g.target), deadline: g.deadline || '', portfolio: !!g.portfolio, accounts: Array.isArray(g.accounts) ? g.accounts : [], order: num(g.sort) })).sort((a, b) => a.order - b.order);
     S.accounts = acc.map(a => ({ id: a.id, name: a.name, type: a.type, ccy: a.ccy, opening: num(a.opening), order: a.sort }));
     S.trades = tr.map(t => ({ id: t.id, ticker: t.ticker, type: t.type, ccy: t.ccy, qty: num(t.qty), price: num(t.price), wht: num(t.wht), extra: num(t.extra), date: t.date, account: t.account, created: ts(t.created_at) }));
     S.cash = ca.map(c => ({ id: c.id, date: c.date, type: c.type, cat: c.cat, desc: c.descr, acct: c.acct, toAcct: c.to_acct, ccy: c.ccy, amount: num(c.amount), created: ts(c.created_at) }));
@@ -675,6 +697,7 @@ function toRow(coll, d) {
   if (coll === 'trades') return { ticker: d.ticker, type: d.type, ccy: d.ccy, qty: d.qty, price: d.price, wht: d.wht || 0, extra: d.extra || 0, date: d.date, account: d.account || '' };
   if (coll === 'cash') return { date: d.date, type: d.type, cat: d.cat || '', descr: d.desc || '', acct: d.acct || '', to_acct: d.toAcct || '', ccy: d.ccy, amount: d.amount };
   if (coll === 'accounts') return { name: d.name, type: d.type, ccy: d.ccy, opening: d.opening, sort: d.order || 0 };
+  if (coll === 'goals') return { name: d.name, target: d.target, deadline: d.deadline || null, portfolio: !!d.portfolio, accounts: d.accounts || [], sort: d.order || 0 };
   if (coll === 'instruments') return { ticker: d.ticker, name: d.name || '', sector: d.sector || '', ccy: d.ccy, price: d.price, price_at: d.priceDate || null };
   return null;
 }
@@ -747,6 +770,7 @@ function render() {
   viewEl.innerHTML = (R[ui.view] || R.overview)();
   if (fid) { const el = document.getElementById(fid); if (el && el !== active) { el.focus(); try { if (sel != null) el.setSelectionRange(sel, sel); } catch {} } }
   drawCharts();
+  celebrateGoals();
 }
 function header(title, sub, actions = '') {
   return `<header class="ph"><div><h1>${title}</h1>${sub ? `<p class="sub">${sub}</p>` : ''}</div><div class="ph-act">${actions}<button class="icon-btn" data-act="hide" aria-label="${HIDE ? 'Összegek mutatása' : 'Összegek elrejtése'}" title="${HIDE ? 'Összegek mutatása' : 'Összegek elrejtése'}" aria-pressed="${HIDE}">${HIDE ? I.eyeOff : I.eye}</button>${ui.view !== 'settings' ? `<button class="icon-btn only-m" data-act="nav" data-v="settings" aria-label="Beállítások">${I.gear}</button>` : ''}</div></header>${banner()}`;
@@ -977,6 +1001,70 @@ async function quickSave() {
   if (n) { ui.qItems = null; ui.qText = ''; render(); toast(n > 1 ? n + ' tétel rögzítve' : 'Tétel rögzítve'); }
 }
 
+/* ----- Célok és befektetési széria ----- */
+// Egy cél állása: a kapcsolt számlák forintegyenlege és (ha be van jelölve) a portfólió aktuális értéke a célösszeghez mérve.
+function goalState(g) {
+  const cur = (g.portfolio ? C.P.R : 0) + C.A.list.filter(a => g.accounts.some(n => low(n) === low(a.name))).reduce((s, a) => s + (a.balHuf || 0), 0);
+  const target = num(g.target), done = target > 0 && cur >= target, left = Math.max(0, target - cur);
+  let monthly = null, late = false;
+  if (g.deadline && !done) { // a hátralévő hónapokba a mostani és a határidő hónapja is beleszámít
+    const now = new Date(), months = (+g.deadline.slice(0, 4) - now.getFullYear()) * 12 + (+g.deadline.slice(5, 7) - (now.getMonth() + 1)) + 1;
+    if (months < 1) late = true; else monthly = left / months;
+  }
+  return { cur, target, frac: target > 0 ? Math.max(0, Math.min(1, cur / target)) : 0, left, done, monthly, late };
+}
+// Hány egymást követő hónapban volt legalább egy vétel. Havonta egy vétel elég, a több nem számít többet.
+// A folyó hónap a végéig nem szakítja meg a szériát, ha még nem volt benne vétel.
+function investStreak() {
+  const has = new Set(); S.trades.forEach(t => { if (t.type === 'Vétel' && t.date) has.add(t.date.slice(0, 7)); });
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  const ym = k => { const d = new Date(y, m - k, 1); return d.getFullYear() + '-' + pad(d.getMonth() + 1); };
+  const off = has.has(ym(0)) ? 0 : 1; let n = 0; while (has.has(ym(off + n))) n++;
+  const strip = []; for (let i = 11; i >= 0; i--) strip.push({ k: ym(i), buy: has.has(ym(i)), run: i >= off && i < off + n });
+  return { n, strip, any: has.size > 0, pending: off === 1 && n > 0 };
+}
+function goalsRow() {
+  const st = investStreak(), goals = S.goals;
+  const goalHTML = g => { const x = goalState(g), dl = g.deadline ? `${g.deadline.slice(0, 4)}. ${g.deadline.slice(5, 7)}` : '';
+    const right = x.done ? '' : x.late ? 'a határidő lejárt' : x.monthly != null ? `havi ${huf(x.monthly)} kell ${dl}-ig` : 'határidő nélkül';
+    return `<button class="goal" data-act="goal-edit" data-id="${esc(g.id)}" ${x.done ? `data-goal-done="${esc(g.id)}"` : ''}>
+      <div class="goal-top"><b>${esc(g.name)}</b>${x.done ? '<span class="pill pos">Elérve</span>' : `<span>${pf1.format(x.frac)}</span>`}</div>
+      <div class="goal-bar" role="img" aria-label="${esc(g.name)}: ${pf1.format(x.frac)}"><i style="width:${(x.frac * 100).toFixed(1)}%"></i></div>
+      <div class="goal-sub"><span>${HIDE ? MASK : nf0.format(Math.round(x.cur))} / ${huf(x.target)}</span><span>${right}</span></div></button>`; };
+  const goalsCard = `<section class="card">
+    <div class="card-h"><h2>Célok</h2>${S.goalsOk ? `<button class="btn ghost sm" data-act="goal-new">${I.plus}Új cél</button>` : ''}</div>
+    ${!S.goalsOk ? `<p class="muted">A célokhoz egyszer le kell futtatni a frissített <code>supabase/schema.sql</code> fájlt a Supabase SQL Editorban. Utána itt vehetsz fel célt.</p>`
+      : goals.length ? goals.map(goalHTML).join('')
+      : `<p class="muted">Tűzz ki egy összeget, például vésztartalékot vagy egy kerek portfólióértéket, és itt követheted, hol tartasz.</p>`}
+  </section>`;
+  const streakCard = st.any ? `<section class="streak">
+    <span class="eyebrow" style="color:#b9e7cf">Befektetési széria</span>
+    <div class="streak-n">${st.n}<small>hónap</small></div>
+    <div style="font-size:13.5px;color:rgba(255,255,255,.85)">${st.n ? 'egymás után, minden hónapban volt vétel' : 'A következő vétellel újraindul a széria.'}${st.pending ? '. Ebben a hónapban még nem volt.' : ''}</div>
+    <div class="streak-strip" role="img" aria-label="Az elmúlt 12 hónap: ${st.strip.filter(x => x.buy).length} hónapban volt vétel, a futó széria ${st.n} hónap">${st.strip.map(x => `<i class="${x.run ? 'run' : x.buy ? 'buy' : ''}"></i>`).join('')}</div>
+    <div class="streak-ax"><span>${MONTHS[+st.strip[0].k.slice(5) - 1]}</span><span>${MONTHS[+st.strip[11].k.slice(5) - 1]}</span></div>
+    <div style="font-size:12.5px;color:rgba(255,255,255,.75);margin-top:auto;padding-top:14px">Havonta egy vétel elég, a több vétel nem számít többet.</div>
+  </section>` : '';
+  return `<div class="grid">${goalsCard}${streakCard}</div>`;
+}
+// Frissen elért cél: egyszer jelez (a látott állapot a store-ban marad), mozgás csak akkor, ha a rendszer engedi.
+function celebrateGoals() {
+  const seen = store.get('goalsDone', {}), live = new Set(S.goals.map(g => g.id)); let changed = false;
+  Object.keys(seen).forEach(id => { if (allLoaded() && !live.has(id)) { delete seen[id]; changed = true; } });
+  document.querySelectorAll('[data-goal-done]').forEach(el => {
+    const id = el.dataset.goalDone; if (seen[id]) return;
+    seen[id] = 1; changed = true;
+    toast('Elérted a célodat: ' + el.querySelector('b').textContent);
+    if (REDUCED() || !el.animate) return;
+    const ease = 'cubic-bezier(.23,1,.32,1)';
+    el.querySelector('.goal-bar i').animate([{ width: '0%', background: '#d9f58c' }, { background: '#d9f58c', offset: .7 }, {}], { duration: 900, easing: ease });
+    el.querySelector('.pill').animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'scale(1.12)', opacity: 1, offset: .6 }, { transform: 'scale(1)' }], { duration: 520, delay: 380, easing: ease, fill: 'backwards' });
+  });
+  // Ha egy cél újra a célösszeg alá kerül, a következő eléréskor megint jelezhet.
+  S.goals.forEach(g => { if (seen[g.id] && !document.querySelector(`[data-goal-done="${g.id}"]`) && ui.view === 'overview' && allLoaded()) { delete seen[g.id]; changed = true; } });
+  if (changed) store.set('goalsDone', seen);
+}
+
 /* ----- Overview ----- */
 function monthly(year) {
   const m = Array.from({ length: 12 }, () => ({ inc: 0, exp: 0 }));
@@ -1026,6 +1114,7 @@ R.overview = () => {
       </div>
     </div>
   </section>
+  ${goalsRow()}
   <div class="grid">
     <section class="card span2">
       <div class="card-h"><h2>Havi pénzáramlás</h2>
@@ -1625,8 +1714,36 @@ async function acctSave(id) {
   if (old && old.name !== name) { // keep links when renaming
     for (const c of S.cash.filter(c => c.acct === old.name || c.toAcct === old.name)) await put('cash', c.id, { ...strip(c), acct: c.acct === old.name ? name : c.acct, toAcct: c.toAcct === old.name ? name : c.toAcct });
     for (const t of S.trades.filter(t => t.account === old.name)) await put('trades', t.id, { ...strip(t), account: name });
+    for (const g of S.goals.filter(g => g.accounts.includes(old.name))) await put('goals', g.id, { ...strip(g), accounts: g.accounts.map(n => n === old.name ? name : n) });
   }
   closeSheet(); toast('Számla mentve');
+}
+
+function goalSheet(g) {
+  const isNew = !g; g = g || { name: '', target: '', deadline: '', portfolio: false, accounts: [] };
+  const on = n => g.accounts.some(x => low(x) === low(n));
+  const body = `<div class="form">
+    ${field('f-gn', 'Cél neve', `<input id="f-gn" value="${esc(g.name)}" maxlength="40" placeholder="pl. Vésztartalék">`, 'full')}
+    ${field('f-gt', 'Célösszeg (Ft)', `<input id="f-gt" inputmode="decimal" value="${nfIn(g.target)}" placeholder="pl. 2 000 000">`)}
+    ${field('f-gd', 'Határidő (nem kötelező)', `<input id="f-gd" type="month" value="${esc((g.deadline || '').slice(0, 7))}">`, '', 'Ha megadod, kiszámolom, havonta mennyit kell félretenned.')}
+    <div class="field full"><label>Mihez mérjük?</label><div class="checks">
+      <label class="check"><input type="checkbox" id="f-gp" ${g.portfolio ? 'checked' : ''}>Befektetési portfólió</label>
+      ${S.accounts.map((a, i) => `<label class="check"><input type="checkbox" data-gacct="${esc(a.name)}" id="f-ga-${i}" ${on(a.name) ? 'checked' : ''}>${esc(a.name)}</label>`).join('')}
+    </div><span class="hint">A bejelölt számlák egyenlege és a portfólió értéke összeadódik, forintban.</span></div></div>`;
+  const footer = `${isNew ? '' : delBtn('goal')}<div class="right"><button class="btn ghost" data-act="sheet-close">Mégse</button><button class="btn" data-act="goal-save" data-id="${esc(g.id || '')}">${isNew ? 'Létrehozás' : 'Mentés'}</button></div>`;
+  openSheet(isNew ? 'Új cél' : g.name, body, footer);
+}
+async function goalSave(id) {
+  const name = fv('f-gn').trim(), target = num(fv('f-gt')), ym = fv('f-gd');
+  if (!name) return setErr('Adj nevet a célnak.');
+  if (!(target > 0)) return setErr('Add meg a célösszeget forintban.');
+  const accounts = [...document.querySelectorAll('[data-gacct]')].filter(x => x.checked).map(x => x.dataset.gacct), portfolio = document.getElementById('f-gp').checked;
+  if (!portfolio && !accounts.length) return setErr('Jelöld be, mihez mérjük a célt.');
+  const old = id ? S.goals.find(g => g.id === id) : null;
+  // A határidő a megadott hónap utolsó napja.
+  const deadline = /^\d{4}-\d{2}$/.test(ym) ? `${ym}-${pad(new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate())}` : '';
+  if (!(await put('goals', id || uid(), { name, target, deadline, portfolio, accounts, order: old ? old.order : S.goals.length }))) return;
+  closeSheet(); toast('Cél mentve');
 }
 
 function instSheet(tk) {
@@ -1761,6 +1878,9 @@ document.addEventListener('click', async e => {
     case 'q-cancel': ui.qItems = null; ui.qErr = ''; render(); break;
     case 'q-save': b.disabled = true; await quickSave(); break;
     case 'acct-new': acctSheet(null); break;
+    case 'goal-new': goalSheet(null); break;
+    case 'goal-edit': goalSheet(S.goals.find(g => g.id === b.dataset.id)); break;
+    case 'goal-save': b.disabled = true; await goalSave(b.dataset.id); b.disabled = false; break;
     case 'recon': reconSheet(); break;
     case 'kw-del': { const r = rules(); r.keywords = (r.keywords || []).filter((_, i) => i !== +b.dataset.i); if (await saveConfig({ rules: r })) toast('Kulcsszó törölve'); break; }
     case 'rr-del': { const r = rules(); r.recurring = (r.recurring || []).filter((_, i) => i !== +b.dataset.i); if (await saveConfig({ rules: r })) toast('Ismétlődő tétel törölve'); break; }
@@ -1789,6 +1909,7 @@ document.addEventListener('click', async e => {
       if (what === 'trade' && await remove('trades', save.dataset.id)) { closeSheet(); toast('Tranzakció törölve'); }
       if (what === 'cash' && await remove('cash', save.dataset.id)) { closeSheet(); toast('Tétel törölve'); }
       if (what === 'acct' && await remove('accounts', save.dataset.id)) { closeSheet(); toast('Számla törölve'); }
+      if (what === 'goal' && await remove('goals', save.dataset.id)) { closeSheet(); toast('Cél törölve'); }
       if (what === 'fx' && await saveFx(S.fx.filter(r => r.d !== save.dataset.d))) { closeSheet(); toast('Árfolyamnap törölve'); }
       break;
     }
