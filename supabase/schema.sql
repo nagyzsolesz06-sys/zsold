@@ -78,12 +78,15 @@ create table if not exists public.fx_rates (
   chf numeric
 );
 
--- Beállítások: kategóriák, NAV adókulcsok
+-- Beállítások: kategóriák, NAV adókulcsok, okos beíró szabályai
 create table if not exists public.settings (
   user_id uuid primary key default auth.uid() references auth.users(id) on delete cascade,
   categories jsonb not null default '[]',
-  tax jsonb not null default '[]'
+  tax jsonb not null default '[]',
+  rules jsonb not null default '{}'     -- okos beíró: alapértelmezett számlák, kulcsszavak, ismétlődő tételek
 );
+-- Korábban létrehozott adatbázisban a rules oszlop pótlása (többször is futtatható)
+alter table public.settings add column if not exists rules jsonb not null default '{}';
 
 -- ============ Biztonság (Row Level Security) ============
 -- Minden saját tábla: csak a bejelentkezett tulajdonos látja és írja a saját sorait.
