@@ -88,6 +88,19 @@ create table if not exists public.settings (
 -- Korábban létrehozott adatbázisban a rules oszlop pótlása (többször is futtatható)
 alter table public.settings add column if not exists rules jsonb not null default '{}';
 
+-- Megtakarítási és befektetési célok (az Áttekintés célkártyája)
+create table if not exists public.goals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  name text not null,
+  target numeric not null check (target > 0),   -- célösszeg forintban
+  deadline date,                                -- nem kötelező
+  portfolio boolean not null default false,     -- beleszámít-e a befektetési portfólió értéke
+  accounts jsonb not null default '[]',         -- a beleszámító számlák neve
+  sort int not null default 0,
+  created_at timestamptz not null default now()
+);
+
 -- ============ Biztonság (Row Level Security) ============
 -- Minden saját tábla: csak a bejelentkezett tulajdonos látja és írja a saját sorait.
 
@@ -98,11 +111,12 @@ alter table public.instruments   enable row level security;
 alter table public.price_history enable row level security;
 alter table public.fx_rates      enable row level security;
 alter table public.settings      enable row level security;
+alter table public.goals         enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['accounts','trades','cash','instruments','settings'] loop
+  foreach t in array array['accounts','trades','cash','instruments','settings','goals'] loop
     execute format('drop policy if exists own_rows on public.%I', t);
     execute format('create policy own_rows on public.%I for all to authenticated
                     using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', t);
@@ -118,8 +132,8 @@ create policy fx_read on public.fx_rates for select to authenticated using (true
 
 -- Hozzáférés: bejelentkezés nélkül (anon) semmi; bejelentkezve csak a fenti szabályok szerint.
 revoke all on public.accounts, public.trades, public.cash, public.instruments,
-              public.price_history, public.fx_rates, public.settings from anon;
+              public.price_history, public.fx_rates, public.settings, public.goals from anon;
 grant select, insert, update, delete on public.accounts, public.trades, public.cash,
-              public.instruments, public.settings to authenticated;
+              public.instruments, public.settings, public.goals to authenticated;
 grant select on public.price_history, public.fx_rates to authenticated;
 -- price_history és fx_rates írása csak a frissítő programé (service role), a weboldalé nem.
