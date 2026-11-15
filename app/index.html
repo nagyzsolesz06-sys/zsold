@@ -310,6 +310,28 @@ img.brand-mark{background:none}
   .hide-sm{display:none}
   .cat-row{grid-template-columns:minmax(0,1fr) auto}.cat-row .cat-bar{grid-column:1/-1;grid-row:2}
 }
+/* ---------- Portfólióérték-grafikon ---------- */
+.pv{display:flex;flex-direction:column;gap:18px}
+.pv-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px 24px;flex-wrap:wrap}
+.pv-head{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pv-big{font-size:clamp(34px,5vw,46px)}
+.pv-leg{display:flex;gap:8px;flex-wrap:wrap}
+.pv-chip{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:500;font-size:13.5px;color:var(--fg);transition:opacity 160ms ease,background-color 160ms ease}
+span.pv-chip{background:var(--surface-2);border-color:transparent}
+button.pv-chip[aria-pressed="false"]{opacity:.55;background:var(--bg)}
+.pv-chip i{width:14px;height:0;border-top:3px solid var(--s1);border-radius:2px}
+.pv-chip i.vw{border-top:2.5px dashed #2a78d6;border-radius:0}
+.pv-chip i.inv{border-top:2px solid var(--fg-3)}
+.pv-chart{height:300px}
+.pv-chart .yl{paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.card .tile.win{background:#0b5a3b!important;color:#fff}.card .tile.win span,.card .tile.win em{color:#d6f2e5}
+.card .tile.lose{background:#fbe9e9!important;color:#8a1c1c}.card .tile.lose span,.card .tile.lose em{color:#8a1c1c}
+.pv-note{margin:0;font-size:12.5px;color:var(--fg-2)}
+@media (max-width:520px){
+  .pv-chart{height:220px}
+  .pv-seg{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));width:100%}
+  .pv-seg button{padding:0;height:44px;font-size:13px}
+}
 /* ---------- Mozgás és apró részletek (Emil Kowalski-féle elvek) ---------- */
 :root{--ease-out:cubic-bezier(.23,1,.32,1);--ease-drawer:cubic-bezier(.32,.72,0,1)}
 ::selection{background:#d9f58c;color:#0b2a1c}
@@ -430,14 +452,15 @@ const VIEWS = [
 ];
 
 /* ---------- state ---------- */
-const S = { trades: [], cash: [], accounts: [], inst: [], fx: [], config: null, loaded: {}, mode: 'loading' };
+const S = { trades: [], cash: [], accounts: [], inst: [], fx: [], ph: {}, rev: 0, config: null, loaded: {}, mode: 'loading' };
 const DEMO = !!window.ZSOLD_DEMO, SP = DEMO ? 'zsdemo.' : 'nzterv.';
 const store = { get(k, d) { try { const v = localStorage.getItem(SP + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem(SP + k, JSON.stringify(v)); } catch {} } };
 const hashView = (location.hash || '').slice(1);
 HIDE = store.get('hide', false);
 const ui = {
   view: VIEWS.some(v => v[0] === hashView) ? hashView : store.get('view', 'overview'),
-  year: new Date().getFullYear(), pfTab: 'pos', trTicker: '', trType: '',
+  year: new Date().getFullYear(), pfTab: store.get('pfTab', 'chart'), trTicker: '', trType: '',
+  pvRange: store.get('pvRange', '1Y'), pvVw: store.get('pvVw', true), pvInv: store.get('pvInv', true), pvAnim: true,
   cfType: 'all', cfCat: '', cfAcct: '', cfMonth: '', cfQ: '',
   fxCcy: 'EUR', fxRange: '1Y', fxShow: 20,
   qText: '', qBusy: false, qItems: null, qErr: '',
@@ -550,6 +573,73 @@ function compute() {
   return { T, P: calcHoldings(T), A: calcAccounts(T) };
 }
 
+/* Portfólióérték visszamenőleg, forintban: napi érték, befizetett tőke és a "ha minden VWCE lett volna" összevetés.
+   Adatbetöltésenként egyszer számol (pvMemo), az időszakváltás csak szeletel. */
+const BENCH = 'VWCE', DAY_MS = 864e5;
+const PV_RANGES = [['1M', '1H', '1 hónap', 1], ['3M', '3H', '3 hónap', 3], ['6M', '6H', '6 hónap', 6], ['YTD', 'Idén', 'idén', 0], ['1Y', '1É', '1 év', 12], ['ALL', 'Mind', 'kezdettől', -1]];
+let pvMemo = { rev: -1, day: '', data: null };
+// Egy eszköz ismert árpontjai időrendben: saját kötési árak, rögzített záróárak (ezek felülírják), végül az aktuális ár.
+// Az at(d) az adott napon érvényes utolsó ismert árat adja, és csak nem csökkenő dátumokkal hívható.
+function pricePoints(tk, T) {
+  const inst = instFor(tk), ccy = up(inst && inst.ccy) || (T.find(t => t.tk === tk) || {}).ccy || 'EUR';
+  const m = new Map();
+  T.forEach(t => { if (t.tk === tk && t.ccy === ccy && t.price > 0) m.set(t.date, t.price); });
+  (S.ph[tk] || []).forEach(x => { if (x.p > 0) m.set(x.d, x.p); });
+  if (inst && inst.price > 0 && inst.priceDate) m.set(inst.priceDate, inst.price);
+  const pts = [...m].sort((a, b) => a[0] < b[0] ? -1 : 1);
+  let i = -1;
+  return { ccy, n: pts.length, at(d) { while (i + 1 < pts.length && pts[i + 1][0] <= d) i++; return i < 0 ? null : pts[i][1]; } };
+}
+function portfolioSeries() {
+  const end = today();
+  if (pvMemo.rev === S.rev && pvMemo.day === end) return pvMemo.data;
+  const T = C.T.filter(t => (t.type === 'Vétel' || t.type === 'Eladás') && t.date && t.qty > 0 && t.date <= end);
+  let data = { days: [], vwOk: false };
+  if (T.length) {
+    const tks = [...new Set(T.map(t => t.tk))], P = {}, qty = {};
+    tks.forEach(tk => { P[tk] = pricePoints(tk, T); qty[tk] = 0; });
+    const B = P[BENCH] || pricePoints(BENCH, T);
+    let ti = 0, inv = 0, units = 0, vwOk = B.n > 0;
+    const days = [];
+    for (let ms = Date.parse(T[0].date); ; ms += DAY_MS) {
+      const d = new Date(ms).toISOString().slice(0, 10); if (d > end) break;
+      const bp = B.at(d), bfx = fxRate(B.ccy, d), bHuf = bp != null && bfx != null ? bp * bfx : null;
+      let flow = 0;
+      for (; ti < T.length && T[ti].date <= d; ti++) {
+        const t = T[ti], buy = t.type === 'Vétel', h = t.huf || 0;
+        qty[t.tk] += buy ? t.qty : -t.qty;
+        flow += buy ? h : -h;
+        // VWCE-szabály: a vétel forintösszegéért aznap VWCE, eladásnál ugyanannyi forintnyi VWCE eladva (legfeljebb nulláig).
+        if (!bHuf) vwOk = false; else units = buy ? units + h / bHuf : Math.max(0, units - h / bHuf);
+      }
+      inv += flow;
+      let pf = 0;
+      for (const tk of tks) {
+        const q = qty[tk]; if (Math.abs(q) < 1e-12) continue;
+        const p = P[tk].at(d), r = fxRate(P[tk].ccy, d); if (p != null && r != null) pf += q * p * r;
+      }
+      days.push({ d, t: ms, pf, vw: bHuf ? units * bHuf : 0, inv, flow });
+    }
+    data = { days, vwOk };
+  }
+  pvMemo = { rev: S.rev, day: end, data };
+  return data;
+}
+// Egy időszak szelete és hozamai. A nyereség a befizetések nélkül értendő: záró érték, mínusz nyitó érték, mínusz az időszak nettó befizetése.
+// A százalék alapja a nyitó érték és az időszakban legfeljebb bent lévő új tőke összege.
+function pvSlice(ser, key) {
+  const days = ser.days, n = days.length, last = days[n - 1];
+  const R = PV_RANGES.find(r => r[0] === key) || PV_RANGES[4];
+  let from = '';
+  if (R[3] > 0) { const d = new Date(); d.setMonth(d.getMonth() - R[3]); from = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  else if (R[3] === 0) from = (new Date().getFullYear() - 1) + '-12-31';
+  let si = -1; if (from) for (let i = 0; i < n && days[i].d <= from; i++) si = i;
+  const start = si < 0 ? { pf: 0, vw: 0, inv: 0 } : days[si]; // ha az időszak eleje az első vétel előtt van, nulláról indul
+  let net = 0, peak = 0; for (let i = si + 1; i < n; i++) { net += days[i].flow; if (net > peak) peak = net; }
+  const gain = k => last[k] - start[k] - net, rate = k => start[k] + peak > 0 ? gain(k) / (start[k] + peak) : null;
+  return { R, pts: si < 0 ? days : days.slice(si), last, gPf: gain('pf'), gVw: gain('vw'), rPf: rate('pf'), rVw: rate('vw'), diff: gain('pf') - gain('vw') };
+}
+
 /* ---------- persistence (Supabase) ---------- */
 const sb = window.supabase.createClient(ZSOLD_CONFIG.url, ZSOLD_CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true } });
 const TABLE = { trades: 'trades', cash: 'cash', accounts: 'accounts', instruments: 'instruments' };
@@ -574,9 +664,10 @@ async function loadAll() {
     S.cash = ca.map(c => ({ id: c.id, date: c.date, type: c.type, cat: c.cat, desc: c.descr, acct: c.acct, toAcct: c.to_acct, ccy: c.ccy, amount: num(c.amount), created: ts(c.created_at) }));
     S.inst = ins.map(i => ({ id: i.id, ticker: i.ticker, name: i.name, sector: i.sector, ccy: i.ccy, price: i.price == null ? null : num(i.price), priceDate: i.price_at ? String(i.price_at).slice(0, 10) : '', source: i.source,
       history: ph.filter(p => p.ticker === i.ticker).map(p => ({ d: p.d, p: num(p.price) })) }));
+    S.ph = {}; ph.forEach(p => { const k = up(p.ticker); (S.ph[k] || (S.ph[k] = [])).push({ d: p.d, p: num(p.price) }); }); // árelőzmény tickerenként, dátum szerint rendezve
     S.fx = fx.map(r => ({ d: r.d, EUR: r.eur == null ? undefined : num(r.eur), USD: r.usd == null ? undefined : num(r.usd), CHF: r.chf == null ? undefined : num(r.chf) }));
     S.config = st[0] ? { categories: st[0].categories, tax: st[0].tax, rules: st[0].rules } : null;
-    S.mode = 'live'; S.loaded.all = true;
+    S.mode = 'live'; S.loaded.all = true; S.rev++;
   } catch (e) { console.error(e); S.mode = 'error'; }
   schedule();
 }
@@ -974,7 +1065,37 @@ R.portfolio = () => {
   const act = ui.pfTab === 'pos' ? btnAdd('trade-new', 'Tranzakció') : btnAdd('trade-new', 'Tranzakció');
   let body = '';
   if (!allLoaded()) body = loadingBlock();
-  else if (ui.pfTab === 'pos') {
+  else if (ui.pfTab === 'chart') {
+    const ser = portfolioSeries();
+    if (!ser.days.length) body = `<section class="card"><div class="empty"><b>Még nincs mit rajzolni</b><span>Rögzítsd az első vételedet, és innentől látod, hogyan alakul a portfóliód értéke.</span>${btnAdd('trade-new', 'Tranzakció')}</div></section>`;
+    else {
+      const sl = pvSlice(ser, ui.pvRange), won = sl.diff >= 0;
+      body = `
+    <section class="card pv">
+      <div class="pv-top">
+        <div class="pv-head">
+          <span class="eyebrow">Portfólió értéke · ${sl.R[2]}</span>
+          <div class="big pv-big">${HIDE ? MASK : nf0.format(Math.round(sl.last.pf))}<small>Ft</small></div>
+          <div class="hero-meta"><span class="pill ${tone(sl.gPf)}">${sHuf(sl.gPf)} · ${pct(sl.rPf)}</span><span class="muted">nyereség az időszakban, befizetések nélkül</span></div>
+        </div>
+        <div class="seg pv-seg" role="group" aria-label="Időszak">${PV_RANGES.map(r => `<button id="pvr-${r[0]}" data-act="pvRange" data-v="${r[0]}" aria-pressed="${sl.R[0] === r[0]}">${r[1]}</button>`).join('')}</div>
+      </div>
+      <div class="pv-leg">
+        <span class="pv-chip"><i></i>Saját portfólió</span>
+        ${ser.vwOk ? `<button class="pv-chip" id="pvVwBtn" data-act="pvVw" aria-pressed="${!!ui.pvVw}"><i class="vw"></i>Ha minden VWCE lett volna</button>` : ''}
+        <button class="pv-chip" id="pvInvBtn" data-act="pvInv" aria-pressed="${!!ui.pvInv}"><i class="inv"></i>Befizetett tőke</button>
+      </div>
+      <div class="chart pv-chart" data-chart="pvline"></div>
+      <div class="tiles t3">
+        <div class="tile"><span>Saját portfólió hozama</span><b class="t-${tone(sl.rPf)}">${pct(sl.rPf)}</b><em>${sHuf(sl.gPf)}</em></div>
+        ${ser.vwOk ? `<div class="tile"><span>Ha minden VWCE lett volna</span><b class="t-${tone(sl.rVw)}">${pct(sl.rVw)}</b><em>${sHuf(sl.gVw)}</em></div>
+        <div class="tile ${won ? 'win' : 'lose'}"><span>${won ? 'A te válogatásod nyert' : 'A VWCE jobb lett volna'}</span><b>${sHuf(sl.diff)}</b><em>${won ? 'ennyivel többet hozott, mint a VWCE' : 'ennyivel többet hozott volna a VWCE'}</em></div>`
+        : `<div class="tile"><span>VWCE-összevetés</span><em>Ehhez az időszak elejéig visszamenő VWCE-ár kell. Amint a frissítő betölti a régi árakat, itt megjelenik.</em></div>`}
+      </div>
+      <p class="pv-note">Visszamenőleg számolva a tranzakcióidból, a rögzített árakból és az MNB-árfolyamból, forintban, tehát a devizahatással együtt. ${ser.vwOk ? 'A VWCE-összevetésben minden vétel forintösszegét aznap VWCE-be tettük volna, minden eladásnál ugyanannyi forintnyi VWCE-t adtunk volna el. ' : ''}Régebbi időszakban heti záróárakkal számol.</p>
+    </section>`;
+    }
+  } else if (ui.pfTab === 'pos') {
     const open = P.list.filter(h => Math.abs(h.qty) > 1e-12).sort((a, b) => b.R - a.R);
     const closed = P.list.filter(h => Math.abs(h.qty) <= 1e-12);
     const prow = h => `<button class="prow" data-act="inst" data-tk="${esc(h.tk)}">
@@ -1026,8 +1147,9 @@ R.portfolio = () => {
   }
   return header('Portfólió', allLoaded() ? `${C.P.list.filter(h => Math.abs(h.qty) > 1e-12).length} nyitott pozíció · árfolyamok: ${fDate(lastFxDate()) || '–'}` : '', act) + `
   <div><div class="seg" role="group" aria-label="Nézet">
-    <button data-act="pfTab" data-v="pos" aria-pressed="${ui.pfTab === 'pos'}">Pozíciók</button>
-    <button data-act="pfTab" data-v="tr" aria-pressed="${ui.pfTab === 'tr'}">Tranzakciók</button>
+    <button id="pft-chart" data-act="pfTab" data-v="chart" aria-pressed="${ui.pfTab === 'chart'}">Grafikon</button>
+    <button id="pft-pos" data-act="pfTab" data-v="pos" aria-pressed="${ui.pfTab === 'pos'}">Pozíciók</button>
+    <button id="pft-tr" data-act="pfTab" data-v="tr" aria-pressed="${ui.pfTab === 'tr'}">Tranzakciók</button>
   </div></div>` + body;
 };
 
@@ -1196,6 +1318,7 @@ function drawCharts() {
     if (k === 'bars') drawBars(el, monthly(ui.year));
     if (k === 'donut') drawDonut(el);
     if (k === 'fxline') drawFx(el);
+    if (k === 'pvline') drawPv(el);
   });
 }
 function drawBars(el, M) {
@@ -1266,8 +1389,67 @@ function drawFx(el) {
   hit.addEventListener('mousemove', move); hit.addEventListener('mouseleave', leave);
   hit.addEventListener('touchmove', move, { passive: true }); hit.addEventListener('touchend', leave);
 }
+function drawPv(el) {
+  const ser = portfolioSeries(); if (!ser.days.length) { el.innerHTML = ''; return; }
+  const full = pvSlice(ser, ui.pvRange).pts;
+  if (full.length < 2) { el.innerHTML = '<p class="muted" style="padding:40px 0;text-align:center">Kevés adat a grafikonhoz, holnaptól rajzol.</p>'; return; }
+  const W = Math.max(280, el.clientWidth), H = el.clientHeight || 300, narrow = W < 460, l = narrow ? 4 : 50, r = 10, t = 12, b = 26;
+  // Ritkítás: képpontonként nagyjából egy pont elég, az utolsó nap mindig megmarad.
+  const step = Math.max(1, Math.ceil(full.length / ((W - l - r) / 2)));
+  const pts = full.filter((p, i) => i % step === 0 || i === full.length - 1), n = pts.length;
+  const showVw = ui.pvVw && ser.vwOk, showInv = !!ui.pvInv;
+  const vals = []; pts.forEach(p => { vals.push(p.pf); if (showVw) vals.push(p.vw); if (showInv) vals.push(p.inv); });
+  let mn = Math.min(...vals), mx = Math.max(...vals); const pd = (mx - mn) * 0.08 || mx * 0.05 || 1; mn -= pd; mx += pd;
+  const t0 = pts[0].t, t1 = pts[n - 1].t;
+  const x = v => l + (W - l - r) * (v - t0) / (t1 - t0 || 1), y = v => t + (H - t - b) * (1 - (v - mn) / (mx - mn));
+  const line = k => pts.map((p, i) => (i ? 'L' : 'M') + x(p.t).toFixed(1) + ',' + y(p[k]).toFixed(1)).join('');
+  let s = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Portfólióérték az idő függvényében">
+    <defs><linearGradient id="pvg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--s1)" stop-opacity=".22"/><stop offset="1" stop-color="var(--s1)" stop-opacity="0"/></linearGradient></defs>`;
+  // Kerek értékű segédvonalak (1, 2, 2,5 vagy 5 valahányszorosa).
+  const raw = (mx - mn) / (narrow ? 3 : 4), pw = Math.pow(10, Math.floor(Math.log10(raw))), nr = raw / pw, st = (nr <= 1 ? 1 : nr <= 2 ? 2 : nr <= 2.5 ? 2.5 : nr <= 5 ? 5 : 10) * pw, labs = [];
+  const yLab = v => HIDE || Math.abs(v) < 1e6 ? compact(v) : (v / 1e6).toFixed(st < 1e5 ? 2 : 1).replace('.', ',') + ' M';
+  for (let v = Math.ceil(mn / st) * st; v <= mx + 1e-6; v += st) {
+    const yy = y(v);
+    s += `<line class="gl" x1="${l}" x2="${W - r}" y1="${yy}" y2="${yy}"/>`;
+    labs.push(narrow ? `<text class="ax yl" x="${W - r}" y="${yy - 5}" text-anchor="end">${yLab(v)}</text>` : `<text class="ax" x="${l - 8}" y="${yy + 4}" text-anchor="end">${yLab(v)}</text>`);
+  }
+  const df = new Intl.DateTimeFormat('hu-HU', (t1 - t0) / DAY_MS <= 200 ? { month: 'short', day: 'numeric' } : { year: 'numeric', month: 'short' });
+  (narrow ? [0, 0.5, 1] : [0, 0.25, 0.5, 0.75, 1]).forEach((f, i, a) => { const p = pts[Math.round((n - 1) * f)]; s += `<text class="ax" x="${x(p.t)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === a.length - 1 ? 'end' : 'middle'}">${df.format(new Date(p.t))}</text>`; });
+  if (showInv) s += `<path id="pvI" d="${pts.map((p, i) => i ? 'H' + x(p.t).toFixed(1) + 'V' + y(p.inv).toFixed(1) : 'M' + x(p.t).toFixed(1) + ',' + y(p.inv).toFixed(1)).join('')}" fill="none" stroke="var(--fg-3)" stroke-width="1.5"/>`;
+  const d = line('pf');
+  s += `<path id="pvA" d="${d}L${x(t1)},${H - b}L${x(t0)},${H - b}Z" fill="url(#pvg)"/>`;
+  if (showVw) s += `<path id="pvV" d="${line('vw')}" fill="none" stroke="#2a78d6" stroke-width="2" stroke-dasharray="6 5" stroke-linejoin="round"/>`;
+  s += `<path id="pvP" d="${d}" fill="none" stroke="var(--s1)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+  s += labs.join('');
+  s += `<circle cx="${x(t1)}" cy="${y(pts[n - 1].pf)}" r="4.5" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/>`;
+  s += `<line id="pvX" class="gl" opacity="0" y1="${t}" y2="${H - b}" x1="-10" x2="-10" style="stroke:var(--fg-3)"/>`;
+  if (showVw) s += `<circle id="pvDv" opacity="0" r="4.5" cx="-10" cy="-10" fill="#2a78d6" stroke="var(--surface)" stroke-width="2"/>`;
+  s += `<circle id="pvD" opacity="0" r="4.5" cx="-10" cy="-10" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/>`;
+  s += `<rect id="pvHit" x="${l}" y="${t}" width="${W - l - r}" height="${H - t - b}" fill="transparent"/></svg>`;
+  el.innerHTML = s;
+  const q = id => el.querySelector(id), svg = q('svg'), hit = q('#pvHit'), xl = q('#pvX'), dp = q('#pvD'), dv = q('#pvDv');
+  if (ui.pvAnim && !REDUCED() && svg.animate) {
+    const p = q('#pvP'), len = p.getTotalLength(), ease = 'cubic-bezier(.23,1,.32,1)';
+    p.animate([{ strokeDasharray: len, strokeDashoffset: len }, { strokeDasharray: len, strokeDashoffset: 0 }], { duration: 560, easing: ease });
+    [q('#pvA'), q('#pvV'), q('#pvI')].forEach(e => e && e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 560, easing: ease }));
+  }
+  ui.pvAnim = false;
+  const move = e => {
+    const pt = e.touches ? e.touches[0] : e, rect = svg.getBoundingClientRect(), px = (pt.clientX - rect.left) * W / rect.width;
+    const tv = t0 + (px - l) / (W - l - r) * (t1 - t0);
+    let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m].t < tv) lo = m; else hi = m; }
+    const p = pts[Math.abs(pts[lo].t - tv) < Math.abs(pts[hi].t - tv) ? lo : hi], cx = x(p.t);
+    xl.setAttribute('opacity', 1); xl.setAttribute('x1', cx); xl.setAttribute('x2', cx);
+    dp.setAttribute('opacity', 1); dp.setAttribute('cx', cx); dp.setAttribute('cy', y(p.pf));
+    if (dv) { dv.setAttribute('opacity', 1); dv.setAttribute('cx', cx); dv.setAttribute('cy', y(p.vw)); }
+    showTip(`<b>${fDate(p.d)}</b><br>Portfólió: ${huf(p.pf)}${showVw ? `<br>Csak VWCE: ${huf(p.vw)}` : ''}${showInv ? `<br>Befizetve: ${huf(p.inv)}` : ''}`, pt.clientX, pt.clientY);
+  };
+  const leave = () => { [xl, dp, dv].forEach(e => e && e.setAttribute('opacity', 0)); hideTip(); };
+  hit.addEventListener('mousemove', move); hit.addEventListener('mouseleave', leave);
+  hit.addEventListener('touchstart', move, { passive: true }); hit.addEventListener('touchmove', move, { passive: true }); hit.addEventListener('touchend', leave);
+}
 document.addEventListener('mouseover', e => { const t = e.target.closest && e.target.closest('[data-tip]'); if (t) showTip(t.getAttribute('data-tip'), e.clientX, e.clientY); });
-document.addEventListener('mousemove', e => { const t = e.target.closest && e.target.closest('[data-tip]'); if (t) showTip(t.getAttribute('data-tip'), e.clientX, e.clientY); else if (!(e.target.id === 'fxHit')) hideTip(); });
+document.addEventListener('mousemove', e => { const t = e.target.closest && e.target.closest('[data-tip]'); if (t) showTip(t.getAttribute('data-tip'), e.clientX, e.clientY); else if (!(e.target.id === 'fxHit' || e.target.id === 'pvHit')) hideTip(); });
 let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(drawCharts, 120); });
 
 /* ---------- sheets (forms) ---------- */
@@ -1560,7 +1742,10 @@ document.addEventListener('click', async e => {
     case 'logout': await logout(); break;
     case 'hide': HIDE = !HIDE; store.set('hide', HIDE); hideTip(); render(); if (!REDUCED() && viewEl.animate) viewEl.animate([{ filter: 'blur(4px)', opacity: .55 }, { filter: 'blur(0)', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.23,1,.32,1)' }); break;
     case 'nav': ui.view = b.dataset.v; store.set('view', ui.view); hideTip(); window.scrollTo(0, 0); render(); break;
-    case 'pfTab': ui.pfTab = b.dataset.v; render(); break;
+    case 'pfTab': ui.pfTab = b.dataset.v; store.set('pfTab', ui.pfTab); ui.pvAnim = true; hideTip(); render(); break;
+    case 'pvRange': ui.pvRange = b.dataset.v; store.set('pvRange', ui.pvRange); ui.pvAnim = true; hideTip(); render(); break;
+    case 'pvVw': ui.pvVw = !ui.pvVw; store.set('pvVw', ui.pvVw); render(); break;
+    case 'pvInv': ui.pvInv = !ui.pvInv; store.set('pvInv', ui.pvInv); render(); break;
     case 'cfType': ui.cfType = b.dataset.v; render(); break;
     case 'fxCcy': ui.fxCcy = b.dataset.v; render(); break;
     case 'fxRange': ui.fxRange = b.dataset.v; render(); break;
